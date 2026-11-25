@@ -8,13 +8,13 @@ A repeatable platform (Ansible + OpenShift GitOps) that demonstrates **software 
 
 | Copy | Role |
 | --- | --- |
-| **GitHub** `panchoraposo/demo-rhads-opencode` (`main`) | Installer and templates for the **next** cluster. |
+| **GitHub** `panchoraposo/ai-coding` (`main`) | Installer and templates for the **next** cluster. |
 | Local working tree | What `./install.sh` applies, then publishes to GitLab. |
 | GitLab `platform-engineers/rhads-platform` | What Argo CD reconciles **after** install (placeholders substituted). |
 
 ```mermaid
 flowchart LR
-  GH[GitHub demo-rhads-opencode]
+  GH[GitHub ai-coding]
   AN[Ansible install.sh]
   GL[GitLab rhads-platform]
   ACD[OpenShift GitOps]

@@ -14,7 +14,7 @@ common_user_password: "backstage"
 
 # Git source used by Argo CD after GitLab is populated. Bootstrap applies
 # manifests from this working tree so the demo can install before the first push.
-git_repo_url: "https://github.com/panchoraposo/demo-rhads-opencode.git"
+git_repo_url: "https://github.com/panchoraposo/ai-coding.git"
 git_target_revision: main
 local_repo_path: /tmp/rhads-gitlab-mirror
 gitlab_project_name: rhads-platform

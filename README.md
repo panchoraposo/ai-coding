@@ -51,8 +51,8 @@ Details: [docs/architecture.md](docs/architecture.md). Live script: [docs/demo-s
 ## Installation
 
 ```bash
-git clone https://github.com/panchoraposo/demo-rhads-opencode.git
-cd demo-rhads-opencode
+git clone https://github.com/panchoraposo/ai-coding.git
+cd ai-coding
 oc login --server=https://api.<cluster> --token=...
 ./install.sh
 ```

@@ -1,0 +1,83 @@
+---
+# Trusted Profile Analyzer for OpenShift 5:
+# - Prefer the OLM operator when rhtpa-operator is on redhat-operators (compatible).
+# - Otherwise install the official Helm chart (OCP 5 compatible, no incompatible OperatorHub CSV).
+- name: Apply TPA data plane (Postgres, secrets, RHDA backend)
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/rhtpa
+  changed_when: true
+
+- name: Check whether TrustedProfileAnalyzer CRD is installed
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} get crd trustedprofileanalyzers.rhtpa.io
+  register: rhtpa_crd
+  changed_when: false
+  failed_when: false
+
+- name: Choose TPA install method
+  ansible.builtin.set_fact:
+    tpa_install_method: "{{ 'operator' if (enable_rhtpa | default(false) | bool and rhtpa_crd.rc == 0) else 'helm' }}"
+
+- name: Show TPA install method
+  ansible.builtin.debug:
+    msg: "TPA install method={{ tpa_install_method }} (operator available={{ enable_rhtpa | default(false) }})"
+
+- name: Render and apply TPA CR (OLM operator path)
+  when: tpa_install_method == 'operator'
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'trustedprofileanalyzer.yaml.j2') | from_yaml }}"
+
+- name: Ensure Helm is available for TPA chart
+  when: tpa_install_method == 'helm'
+  ansible.builtin.command:
+    cmd: helm version --short
+  changed_when: false
+
+- name: Add OpenShift Helm charts repo
+  when: tpa_install_method == 'helm'
+  ansible.builtin.command:
+    cmd: helm repo add openshift-helm-charts https://charts.openshift.io/
+  register: helm_repo_add
+  changed_when: "'has been added' in helm_repo_add.stdout or 'already exists' in helm_repo_add.stderr"
+  failed_when: false
+
+- name: Update OpenShift Helm charts repo
+  when: tpa_install_method == 'helm'
+  ansible.builtin.command:
+    cmd: helm repo update openshift-helm-charts
+  changed_when: true
+
+- name: Write TPA Helm values
+  when: tpa_install_method == 'helm'
+  ansible.builtin.copy:
+    dest: /tmp/rhads-tpa-values.yaml
+    content: "{{ lookup('template', 'tpa-helm-values.yaml.j2') }}"
+    mode: "0600"
+
+- name: Install or upgrade RHTPA via Helm
+  when: tpa_install_method == 'helm'
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - --install
+      - rhads-tpa
+      - openshift-helm-charts/redhat-trusted-profile-analyzer
+      - --namespace
+      - "{{ tpa_namespace }}"
+      - --create-namespace
+      - --values
+      - /tmp/rhads-tpa-values.yaml
+      - --wait
+      - --timeout
+      - 20m
+  register: tpa_helm
+  retries: 2
+  delay: 30
+  until: tpa_helm.rc == 0
+  changed_when: true
+
+- name: Mark TPA enabled after successful install
+  ansible.builtin.set_fact:
+    enable_tpa: true

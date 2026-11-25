@@ -2,49 +2,51 @@
 
 This demo targets **Red Hat OpenShift 5** with:
 
-| Product | Expected version / channel |
-| --- | --- |
-| OpenShift | 5.x (Kubernetes 1.36) |
-| Red Hat Developer Hub | 2.1 (`fast-2.1`) |
-| OpenShift Dev Spaces | 3.31 (`stable`) |
-| Quay | `stable-5.0` (not `stable-3.17`) |
-| ODF | `stable-5.0` (not `stable-4.22`) |
-| OpenShift AI (`rhods-operator`) | Detected at install — often via AgnosticD `rhbk-operator-catalogsource` until published on `redhat-operators` |
-| RHTPA | Detected at install — same AgnosticD fallback (`stable-v3`) |
-| OpenShell | Helm chart from `oci://quay.io/ai-openshell/charts/openshell` |
-| Praxis AI | Container image from the Praxis AI project (`praxis-proxy/ai`) |
-| Agent Sandbox | SIG manifest and/or `agent-sandbox-operator` (`preview-0.9`) |
+| Product | How it installs on OCP 5 | Compatible? |
+| --- | --- | --- |
+| OpenShift | 5.x | — |
+| RHDH 2.1 | `fast-2.1` on `redhat-operators` | Yes |
+| Dev Spaces 3.31 | `stable` | Yes |
+| Pipelines / GitOps / ACS / RHTAS | `latest` / `stable` | Yes |
+| Quay | **`stable-5.0`** | Yes |
+| ODF | **`stable-5.0`** | Yes |
+| AMQ Streams / Console / Apicurio / COO / ESO | `stable` / `2.x` | Yes |
+| **Trusted Profile Analyzer** | Prefer OLM `rhtpa-operator` when on `redhat-operators`; otherwise **Helm** chart `redhat-trusted-profile-analyzer` 3.1.x | Yes (Helm path avoids incompatible OperatorHub CSV) |
+| **OpenShift AI (`rhods-operator`)** | Only if published on `redhat-operator-index:v5.0` | Not in the GA OCP 5 index yet — skipped |
+| RHBK | Often from sandbox `rhbk-operator-catalogsource` (AgnosticD) | Catalog lists many OCP 4.22 packages → OperatorHub **Incompatible** noise |
 
-## Catalog detection
+## Why OperatorHub shows “Incompatible”
 
-`ansible/playbooks/roles/gitops-bootstrap/tasks/resolve-optional-operators.yaml` enables RHTPA / OpenShift AI **only** when the package is published on `redhat-operators` for this cluster.
+On RHPDS / AgnosticD sandboxes, `keycloak/rhbk-operator-catalogsource` is usually a **`olm_snapshot_redhat_catalog:v4.22_*`** image. OLM still indexes those PackageManifests on an OCP 5 cluster, so the console Cluster compatibility filter lists them as **Incompatible**. That does **not** mean your subscribed demo operators are broken.
 
-AgnosticD `rhbk-operator-catalogsource` (often a **v4.22** OLM snapshot under `keycloak`) may still list `rhtpa-operator` / `rhods-operator` PackageManifests, but OLM on OpenShift 5 rejects them (`ConstraintsNotSatisfiable`). Those catalogs are **not** used as a fallback.
+Do **not** subscribe to `rhtpa-operator` / `rhods-operator` from that v4.22 snapshot — OLM returns `ConstraintsNotSatisfiable` on OCP 5.
 
-When packages are missing, install continues with `enable_rhtpa=false` / `enable_rhoai=false`. OpenCode + OpenShell + EnMaaS (Praxis) still install; in-cluster `LLMInferenceService` requires `enable_rhoai=true`.
+Official OCP 5 marketplace indexes:
 
-## Capacity
+- `registry.redhat.io/redhat/redhat-operator-index:v5.0`
+- (same tag pattern for certified / community)
 
-| Workload | Notes |
-| --- | --- |
-| RHADS base + Kafka/CDC/Perses | Plan **≥ 16 CPU / 64 Gi** |
-| OpenShell + Agent Sandbox | Modest CPU/memory; requires NetworkPolicy enforcement |
-| llm-d / `LLMInferenceService` | **GPU required** when RHOAI is enabled |
+As of this demo’s target date, **`rhtpa-operator` and `rhods-operator` are absent from `redhat-operator-index:v5.0`**.
 
-Recommended sandbox for the full AI path: **≥ 24 CPU / 96 Gi RAM + 1× GPU**.
+## TPA on OCP 5 (Helm)
 
-## llm-d / Service Mesh
+Installer task: `gitops-bootstrap/tasks/apply-tpa.yaml`
 
-llm-d on OpenShift expects **no OpenShift Service Mesh v2 / Istio** on the cluster (CRD conflicts with the inference gateway). Prefer Gateway API with the OpenShift AI inference Gateway.
+1. Applies `gitops/components/rhtpa` (Postgres, secrets, RHDA backend).
+2. If the OLM CRD exists → apply `TrustedProfileAnalyzer` CR.
+3. Else → `helm upgrade --install` from [openshift-helm-charts/redhat-trusted-profile-analyzer](https://charts.openshift.io/).
 
-## NetworkPolicy
+## OpenShift AI / llm-d
 
-OpenShell creates NetworkPolicies for sandbox namespaces. Confirm the cluster CNI **enforces** them (OVN-Kubernetes does).
+`enable_rhoai` stays false until `rhods-operator` appears on `redhat-operators` for OCP 5. OpenCode + OpenShell + EnMaaS (Praxis) still install; in-cluster `LLMInferenceService` waits on RHOAI.
 
-## Smoke checks after install
+## Capacity / CNI / Service Mesh
+
+See earlier notes: NetworkPolicy-capable CNI for OpenShell; no OSSM v2 when using llm-d; GPU when RHOAI is enabled.
+
+## Smoke
 
 ```bash
 ./scripts/smoke-ai.sh
+oc -n trusted-profile-analyzer get route,pods
 ```
-
-Checks EnMaaS `/v1/models`, OpenShell gateway readiness, and llm-d InferenceService status (when enabled).

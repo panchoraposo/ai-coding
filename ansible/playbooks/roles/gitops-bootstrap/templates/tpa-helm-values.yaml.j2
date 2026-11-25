@@ -1,0 +1,110 @@
+# RHTPA via official Helm chart (OCP 5 compatible — no OperatorHub operator required).
+# Mirrors the demo TrustedProfileAnalyzer CR settings from trustedprofileanalyzer.yaml.j2.
+appDomain: {{ tpa_app_domain }}
+partOf: trustify
+replicas: 1
+
+openshift:
+  useServiceCa: true
+
+ingress:
+  enabled: true
+  className: openshift-default
+  additionalAnnotations:
+    haproxy.router.openshift.io/timeout: "5m"
+
+storage:
+  type: filesystem
+  size: 20Gi
+
+database:
+  sslMode: allow
+  host:
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-credentials
+        key: db.host
+  port:
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-credentials
+        key: db.port
+  name:
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-credentials
+        key: db.name
+  username:
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-credentials
+        key: db.user
+  password:
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-credentials
+        key: db.password
+
+oidc:
+  issuerUrl: https://{{ keycloak_hostname }}/realms/{{ keycloak_trustify_realm }}
+  uiScope: "openid read:document"
+  loadUser: true
+  clients:
+    frontend: {}
+    cli:
+      clientSecret: cli-demo-secret
+
+metrics:
+  enabled: false
+
+tracing:
+  enabled: false
+
+modules:
+  createDatabase:
+    enabled: true
+  migrateDatabase:
+    enabled: true
+  createImporters:
+    enabled: true
+    importers:
+      cve:
+        cve:
+          description: CVE Project Database (cve.org)
+          period: 1d
+          source: https://github.com/CVEProject/cvelistV5
+          disabled: false
+      osv-github:
+        osv:
+          description: GitHub Advisory Database
+          period: 1d
+          transport: git
+          source: https://github.com/github/advisory-database
+          path: advisories
+          disabled: true
+      redhat-csaf:
+        csaf:
+          description: Red Hat security advisories
+          period: 1d
+          source: redhat.com
+          disabled: false
+          fetchRetries: 50
+  server:
+    enabled: true
+    replicas: 1
+    recommendPatterns:
+      - "^(.+)\\.redhat-[0-9]+$"
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+  importer:
+    enabled: true
+    replicas: 1
+    concurrency: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    workingDirectory:
+      size: 40Gi

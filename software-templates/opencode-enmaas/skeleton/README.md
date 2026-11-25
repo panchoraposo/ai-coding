@@ -4,12 +4,16 @@ AI coding demo app for **OpenCode + EnMaaS (Praxis) + OpenShell** on the RHADS p
 
 ## Inner loop (Dev Spaces)
 
-1. Open this repo in **OpenShift Dev Spaces**.
-2. Run **Write .env for EnMaaS (Praxis) + OpenCode**.
-3. Open **OpenCode** and ask for a change (for example extend `/api/hello`).
+1. Open this repo in **OpenShift Dev Spaces** (che-code). On first start:
+   - **OpenCode** IDE extension (`sst-dev.opencode`) installs from `.vscode/extensions.json` via Open VSX.
+   - **postStart** runs **Configure OpenCode (.env) + OpenShell CLI** (writes `.env` and installs the `openshell` binary under `~/.local/bin`).
+2. If you need to re-run setup: Commands → **Configure OpenCode (.env) + OpenShell CLI**.
+3. Open the **OpenCode** view and ask for a change (for example extend `/api/hello`).
 4. Run **Demo OpenShell deny** to show blocked egress to an unapproved host.
 5. Run **Quarkus dev** and hit `/api/hello` / `/api/info`.
 6. Use **Red Hat Dependency Analytics** on `pom.xml` (intentional old commons-text / snakeyaml).
+
+> OpenShell has **no** VS Code extension — the template installs the **CLI** and points it at the in-cluster gateway (`OPENSHELL_GATEWAY` / policy `rhads-opencode`).
 
 ## Platform links
 

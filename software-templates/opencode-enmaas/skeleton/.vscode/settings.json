@@ -1,6 +1,7 @@
 {
   "redhat.telemetry.enabled": false,
   "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
   "java.server.launchMode": "Hybrid",
   "java.import.gradle.enabled": false,
   "java.configuration.detectJdksAtStart": true,
@@ -11,5 +12,8 @@
   "maven.executable.preferMavenWrapper": true,
   "redHatDependencyAnalytics.mvn.preferWrapper": "true",
   "redHatDependencyAnalytics.matchManifestVersions": false,
-  "redHatDependencyAnalytics.backendUrl": "http://rhda-backend.trusted-profile-analyzer.svc:8080"
+  "redHatDependencyAnalytics.backendUrl": "http://rhda-backend.trusted-profile-analyzer.svc:8080",
+  "opencode.provider": "openai",
+  "opencode.model": "${{values.maas_model}}",
+  "opencode.baseURL": "${{values.maas_base_url}}"
 }

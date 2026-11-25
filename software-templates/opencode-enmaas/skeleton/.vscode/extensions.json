@@ -2,6 +2,6 @@
   "recommendations": [
     "redhat.fabric8-analytics",
     "redhat.java",
-    "sst.opencode"
+    "sst-dev.opencode"
   ]
 }

@@ -8,11 +8,14 @@ metadata:
     app.kubernetes.io/part-of: che.eclipse.org
 data:
   # Only RHDA globally. Language tooling (Java, Kaoto, ESLint, …) lives in each template.
+  # Open VSX id is sst-dev.opencode (sst.opencode does not exist → silent skip).
+  # OpenShell has no VS Code extension; template installs the openshell CLI instead.
   extensions.json: |
     {
       "recommendations": [
         "redhat.fabric8-analytics",
-        "sst.opencode"
+        "redhat.java",
+        "sst-dev.opencode"
       ]
     }
   settings.json: |

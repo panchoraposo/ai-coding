@@ -4,7 +4,7 @@
     {
       "label": "devfile: Quarkus dev (API + Dev UI on 8080)",
       "type": "shell",
-      "command": "bash -c 'set -euo pipefail; . .devcontainer/setup-java.sh; bash .devcontainer/setup-enmaas.sh; ./mvnw -s .mvn/settings.xml quarkus:dev -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=8080 -Dquarkus.test.continuous-testing=disabled -Dquarkus.analytics.disabled=true'",
+      "command": "bash -c 'set -euo pipefail; . .devcontainer/setup-java.sh; bash .devcontainer/setup-enmaas.sh; bash .devcontainer/setup-openshell.sh || true; ./mvnw -s .mvn/settings.xml quarkus:dev -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=8080 -Dquarkus.test.continuous-testing=disabled -Dquarkus.analytics.disabled=true'",
       "options": { "cwd": "${workspaceFolder}" },
       "group": { "kind": "test", "isDefault": true },
       "presentation": { "reveal": "always", "panel": "dedicated" },
@@ -42,6 +42,20 @@
       "label": "devfile: Write .env for EnMaaS (Praxis) + OpenCode",
       "type": "shell",
       "command": "bash .devcontainer/setup-enmaas.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "devfile: Install OpenShell CLI",
+      "type": "shell",
+      "command": "bash .devcontainer/setup-openshell.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "devfile: Configure OpenCode (.env) + OpenShell CLI",
+      "type": "shell",
+      "command": "bash -c 'set -euo pipefail; bash .devcontainer/setup-enmaas.sh; bash .devcontainer/setup-openshell.sh'",
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },

@@ -55,24 +55,64 @@
     content: "{{ lookup('template', 'tpa-helm-values.yaml.j2') }}"
     mode: "0600"
 
-- name: Remove unmanaged storage PVC so Helm can create it
+# migrate-db is a Helm pre-install hook that mounts PVC "storage", but the chart
+# only creates that PVC as a normal resource after hooks. Pre-create/adopt it.
+- name: Ensure Helm-owned storage PVC exists before RHTPA hooks
   when: tpa_install_method == 'helm'
   ansible.builtin.shell: |
     set -euo pipefail
     NS="{{ tpa_namespace }}"
-    if ! oc --context "{{ oc_context }}" -n "${NS}" get pvc storage >/dev/null 2>&1; then
-      exit 0
+    CTX="{{ oc_context }}"
+    SIZE="{{ tpa_storage_size | default('20Gi') }}"
+    if oc --context "${CTX}" -n "${NS}" get pvc storage >/dev/null 2>&1; then
+      oc --context "${CTX}" -n "${NS}" label pvc storage \
+        app.kubernetes.io/managed-by=Helm \
+        app.kubernetes.io/instance=rhads-tpa \
+        app.kubernetes.io/name=storage \
+        app.kubernetes.io/part-of=trustify \
+        --overwrite
+      oc --context "${CTX}" -n "${NS}" annotate pvc storage \
+        meta.helm.sh/release-name=rhads-tpa \
+        meta.helm.sh/release-namespace="${NS}" \
+        --overwrite
+    else
+      cat <<EOF | oc --context "${CTX}" apply -f -
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: storage
+      namespace: ${NS}
+      labels:
+        app.kubernetes.io/name: storage
+        app.kubernetes.io/instance: rhads-tpa
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: trustify
+      annotations:
+        meta.helm.sh/release-name: rhads-tpa
+        meta.helm.sh/release-namespace: ${NS}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${SIZE}
+    EOF
     fi
-    managed=$(oc --context "{{ oc_context }}" -n "${NS}" get pvc storage \
-      -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || true)
-    if [ "${managed}" = "Helm" ]; then
-      exit 0
-    fi
-    oc --context "{{ oc_context }}" -n "${NS}" delete pvc storage --wait=false
   args:
     executable: /bin/bash
   changed_when: true
-  failed_when: false
+
+- name: Wait for Trustify OIDC before RHTPA Helm (server probes fail without it)
+  when: tpa_install_method == 'helm'
+  ansible.builtin.uri:
+    url: "https://{{ keycloak_hostname }}/realms/{{ keycloak_trustify_realm }}/.well-known/openid-configuration"
+    method: GET
+    status_code: 200
+    validate_certs: false
+  register: tpa_oidc
+  retries: 30
+  delay: 10
+  until: tpa_oidc.status == 200
 
 - name: Install or upgrade RHTPA via Helm
   when: tpa_install_method == 'helm'

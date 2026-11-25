@@ -10,6 +10,13 @@ server:
   # Shared sandbox namespace for the demo (platform-managed).
   workspaceMode: shared
 
+# OpenShift restricted-v2 SCC assigns UID/fsGroup from the namespace range.
+# Hard-coded 1000 (chart default) blocks the StatefulSet with FailedCreate.
+podSecurityContext:
+  fsGroup: null
+securityContext:
+  runAsUser: null
+
 route:
   # OpenShift Route is managed separately in route.yaml with a short hostname.
   enabled: false

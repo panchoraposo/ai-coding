@@ -204,14 +204,26 @@
   until: patch_rhtas.rc == 0
   ignore_errors: true
 
+- name: Check whether TrustedProfileAnalyzer CRD is installed
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} get crd trustedprofileanalyzers.rhtpa.io
+  register: rhtpa_crd
+  changed_when: false
+  failed_when: false
+
+- name: Disable TPA when the operator CRD is missing
+  ansible.builtin.set_fact:
+    enable_rhtpa: false
+  when: rhtpa_crd.rc | default(1) != 0
+
 - name: Apply TPA data plane
-  when: enable_rhtpa | default(true) | bool
+  when: enable_rhtpa | default(false) | bool
   ansible.builtin.command:
     cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/rhtpa
   changed_when: true
 
 - name: Render and apply TPA CR
-  when: enable_rhtpa | default(true) | bool
+  when: enable_rhtpa | default(false) | bool
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'trustedprofileanalyzer.yaml.j2') | from_yaml }}"

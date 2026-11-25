@@ -44,9 +44,9 @@ odf_channel: stable-5.0
 rhbk_channel: stable-v26.6
 rhoai_channel: stable-3.x
 enable_ai_coding_stack: true
-# Resolved in openshift-config/set-vars.yaml (package presence + catalog source).
-enable_rhtpa: true
-enable_rhoai: true
+# Default off; resolve-optional-operators / CRD probes enable when available.
+enable_rhtpa: false
+enable_rhoai: false
 openshell_helm_chart: "oci://quay.io/ai-openshell/charts/openshell"
 openshell_helm_version: ""
 openshell_namespace: openshell

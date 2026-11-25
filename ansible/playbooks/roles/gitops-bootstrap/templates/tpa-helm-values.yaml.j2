@@ -1,5 +1,6 @@
 # RHTPA via official Helm chart (OCP 5 compatible — no OperatorHub operator required).
-# Mirrors the demo TrustedProfileAnalyzer CR settings from trustedprofileanalyzer.yaml.j2.
+# Chart 3.1.x schema $ref to urn:k8s:v1.29.0:EnvVarSource is broken; install uses
+# --skip-schema-validation. Use plain strings for database (not secretKeyRef).
 appDomain: {{ tpa_app_domain }}
 partOf: trustify
 replicas: 1
@@ -19,31 +20,15 @@ storage:
 
 database:
   sslMode: allow
-  host:
-    valueFrom:
-      secretKeyRef:
-        name: postgresql-credentials
-        key: db.host
-  port:
-    valueFrom:
-      secretKeyRef:
-        name: postgresql-credentials
-        key: db.port
-  name:
-    valueFrom:
-      secretKeyRef:
-        name: postgresql-credentials
-        key: db.name
-  username:
-    valueFrom:
-      secretKeyRef:
-        name: postgresql-credentials
-        key: db.user
-  password:
-    valueFrom:
-      secretKeyRef:
-        name: postgresql-credentials
-        key: db.password
+  host: tpa-postgresql
+  port: "5432"
+  name: {{ tpa_db_name }}
+  username: {{ tpa_db_user }}
+  password: {{ tpa_db_password }}
+
+# Top-level objects are required by chart templates when modules.*.enabled is true.
+createDatabase: {}
+migrateDatabase: {}
 
 oidc:
   issuerUrl: https://{{ keycloak_hostname }}/realms/{{ keycloak_trustify_realm }}

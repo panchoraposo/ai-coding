@@ -69,6 +69,8 @@
       - --create-namespace
       - --values
       - /tmp/rhads-tpa-values.yaml
+      # Chart schema refs urn:k8s:v1.29.0:EnvVarSource which Helm cannot resolve.
+      - --skip-schema-validation
       - --wait
       - --timeout
       - 20m

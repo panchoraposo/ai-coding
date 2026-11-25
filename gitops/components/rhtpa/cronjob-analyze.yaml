@@ -1,0 +1,92 @@
+# After a large Syft SBOM ingest, stats on the small SBOM tables go stale
+# and GET /api/v3/sbom/{id} can take >30s. Refresh those tables only.
+# A full-database ANALYZE re-reads the CVE tables and stalls the UI.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tpa-pg-analyze
+  namespace: trusted-profile-analyzer
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+spec:
+  # A fresh Syft SBOM stales the small SBOM tables. Refresh only those.
+  # ANALYZE of the whole database re-reads the CVE tables (purl_status is
+  # several GB) and was running almost continuously, which made the SBOM
+  # list wait on disk.
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/worker
+                        operator: Exists
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+          containers:
+            - name: analyze
+              image: registry.redhat.io/rhel9/postgresql-16:latest
+              env:
+                - name: PGHOST
+                  value: tpa-postgresql
+                # Superuser: CREATE EXTENSION pg_prewarm on first run, then
+                # keep hot pages in shared_buffers for the UI.
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgresql-admin-credentials
+                      key: db.user
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgresql-admin-credentials
+                      key: db.password
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgresql-admin-credentials
+                      key: db.name
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  psql -v ON_ERROR_STOP=1 -c "ANALYZE sbom, sbom_package, sbom_node, sbom_node_purl_ref, sbom_node_cpe_ref, sbom_describing_cpe, base_purl, versioned_purl, qualified_purl"
+                  # Package detail (GET /api/v3/purl/{uuid}) loads scores with
+                  # WHERE vulnerability_id = $cve for every status row. Without
+                  # this index PostgreSQL seq-scans advisory_vulnerability_score
+                  # (~110ms × hundreds of CVEs → 30–60s for openssl).
+                  # CONCURRENTLY cannot run inside a transaction block.
+                  psql -v ON_ERROR_STOP=1 -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_adv_vuln_score_vulnerability_id ON advisory_vulnerability_score (vulnerability_id)"
+                  # Keep the SBOM advisory join and package search hot. Cold
+                  # pages on version_range / purl indexes make the UI wait
+                  # tens of seconds after idle periods.
+                  psql -v ON_ERROR_STOP=1 <<'SQL'
+                  CREATE EXTENSION IF NOT EXISTS pg_prewarm;
+                  SELECT pg_prewarm(c::regclass, 'buffer', 'main', NULL, NULL)
+                  FROM (VALUES
+                    ('version_range'),
+                    ('version_range_pkey'),
+                    ('purl_status_base_purl_id_idx'),
+                    ('base_purl'),
+                    ('basepurlnameginidx'),
+                    ('basepurlnamespaceginidx'),
+                    ('advisory_identifier_idx'),
+                    ('vulnerability_pkey'),
+                    ('idx_adv_vuln_score_vulnerability_id'),
+                    ('idx_adv_vuln_score_advisory_id')
+                  ) AS t(c);
+                  SQL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi

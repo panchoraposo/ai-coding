@@ -1,0 +1,389 @@
+app:
+  title: Red Hat Developer Hub — RHADS Supply Chain
+  baseUrl: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+  extensions:
+    - entity-content:scorecard/entity-content-scorecard:
+        config:
+          allowedFilters:
+            - kind: component
+    # Scorecard home cards replace the classic home page. The built-in
+    # sections stay, and the four DORA metrics sit above them.
+    - page:home: false
+    - page:homepage:
+        config:
+          path: /
+          title: Home
+    - api:home/visits: true
+    - app-root-element:home/visit-listener: true
+    - home-page-layout:homepage/dynamic-homepage-layout:
+        config:
+          customizable: false
+          widgetLayout:
+            scorecard-aggregated-card:
+              - id: DoraDeploymentFrequency
+                props:
+                  aggregationId: dora.deploymentFrequency
+                priority: 410
+                breakpoints:
+                  xl: { w: 3, h: 6, x: 0, y: 0 }
+                  lg: { w: 3, h: 6, x: 0, y: 0 }
+                  md: { w: 6, h: 6, x: 0, y: 0 }
+                  sm: { w: 6, h: 6, x: 0, y: 0 }
+                  xs: { w: 12, h: 6, x: 0, y: 0 }
+                  xxs: { w: 12, h: 6, x: 0, y: 0 }
+              - id: DoraLeadTime
+                props:
+                  aggregationId: dora.medianLeadTimeForChanges
+                priority: 410
+                breakpoints:
+                  xl: { w: 3, h: 6, x: 3, y: 0 }
+                  lg: { w: 3, h: 6, x: 3, y: 0 }
+                  md: { w: 6, h: 6, x: 6, y: 0 }
+                  sm: { w: 6, h: 6, x: 6, y: 0 }
+                  xs: { w: 12, h: 6, x: 0, y: 6 }
+                  xxs: { w: 12, h: 6, x: 0, y: 6 }
+              - id: DoraChangeFailureRate
+                props:
+                  aggregationId: dora.changeFailureRate
+                priority: 410
+                breakpoints:
+                  xl: { w: 3, h: 6, x: 6, y: 0 }
+                  lg: { w: 3, h: 6, x: 6, y: 0 }
+                  md: { w: 6, h: 6, x: 0, y: 6 }
+                  sm: { w: 6, h: 6, x: 0, y: 6 }
+                  xs: { w: 12, h: 6, x: 0, y: 12 }
+                  xxs: { w: 12, h: 6, x: 0, y: 12 }
+              - id: DoraTimeToRestore
+                props:
+                  aggregationId: dora.medianTimeToRestore
+                priority: 410
+                breakpoints:
+                  xl: { w: 3, h: 6, x: 9, y: 0 }
+                  lg: { w: 3, h: 6, x: 9, y: 0 }
+                  md: { w: 6, h: 6, x: 6, y: 6 }
+                  sm: { w: 6, h: 6, x: 6, y: 6 }
+                  xs: { w: 12, h: 6, x: 0, y: 18 }
+                  xxs: { w: 12, h: 6, x: 0, y: 18 }
+
+backend:
+  baseUrl: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+  listen:
+    port: 7007
+    host: 0.0.0.0
+  cors:
+    origin: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  csp:
+    connect-src: ["'self'", "http:", "https:", "data:"]
+    # Lightspeed FAB / chat loads avatars from GitLab and Gravatar.
+    img-src:
+      - "'self'"
+      - "data:"
+      - https://secure.gravatar.com
+      - https://avatars.githubusercontent.com
+      - https://${GITLAB_HOST}
+    script-src:
+      - "'self'"
+      - "'unsafe-eval'"
+  auth:
+    keys:
+      - secret: ${BACKEND_SECRET}
+    # Static token for MCP clients (Cursor, etc.) → /api/mcp-actions/v1
+    externalAccess:
+      - type: static
+        options:
+          token: ${MCP_TOKEN}
+          subject: mcp-clients
+  actions:
+    pluginSources:
+      - software-catalog-mcp-extras
+      - techdocs-mcp-extras
+      - scaffolder-mcp-extras
+      # Core action sources required alongside the *-mcp-extras plugins.
+      - catalog
+      - scaffolder
+      # Community Argo CD scaffolder/MCP actions (backstage-community-argocd:create-resources).
+      - backstage-community-argocd
+
+# Full-page redirect instead of a popup so the OIDC session cookie is sent.
+enableExperimentalRedirectFlow: true
+
+auth:
+  environment: production
+  session:
+    secret: ${BACKEND_SECRET}
+  providers:
+    oidc:
+      production:
+        prompt: auto
+        metadataUrl: https://sso.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}/realms/backstage/.well-known/openid-configuration
+        clientId: backstage
+        clientSecret: ${OAUTH_CLIENT_SECRET}
+        callbackUrl: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}/api/auth/oidc/handler/frame
+        additionalScopes:
+          - openid
+          - profile
+          - email
+        signIn:
+          resolvers:
+            # 2.1's OIDC module accepts this name in its schema but does not
+            # register it, so startup fails. Workshop users are dev1@rhads.demo
+            # with catalog name dev1, so the email local-part is the username.
+            - resolver: emailLocalPartMatchingUserEntityName
+              dangerouslyAllowSignInWithoutUserInCatalog: true
+            - resolver: emailMatchingUserEntityProfileEmail
+              dangerouslyAllowSignInWithoutUserInCatalog: true
+
+signInPage: oidc
+
+organization:
+  name: RHADS Demo
+
+catalog:
+  rules:
+    - allow: [Component, System, API, Resource, Location, Template, Domain, Group, User]
+  locations:
+    - type: file
+      target: /opt/app-root/src/users.yaml
+      rules:
+        - allow: [User, Group]
+    - type: url
+      target: https://${GITLAB_HOST}/platform-engineers/rhads-platform/-/blob/main/catalog/all.yaml
+      rules:
+        # API required so Apicurio-annotated schemas (trip-plan-events, template APIs) ingest.
+        - allow: [Template, Location, Component, System, Domain, API, User, Group]
+  providers:
+    keycloakOrg:
+      default:
+        baseUrl: https://sso.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+        loginRealm: backstage
+        realm: backstage
+        clientId: backstage
+        clientSecret: ${OAUTH_CLIENT_SECRET}
+        schedule:
+          frequency: { minutes: 2 }
+          timeout: { minutes: 1 }
+          initialDelay: { seconds: 15 }
+    gitlab:
+      gitlab:
+        host: ${GITLAB_HOST}
+        group: developers
+        orgEnabled: false
+        schedule:
+          frequency: { minutes: 5 }
+          timeout: { minutes: 3 }
+
+permission:
+  enabled: true
+  rbac:
+    admin:
+      users:
+        - name: user:default/pe1
+        - name: user:default/pe2
+        - name: user:default/pe3
+    conditionalPoliciesFile: /opt/app-root/src/rbac-conditional-policies.yaml
+    policies-csv-file: /opt/app-root/src/rbac-policy.csv
+    policyFileReload: true
+
+scaffolder:
+  defaultAuthor:
+    name: Red Hat Developer Hub
+    email: rhdh@rhads.demo
+
+integrations:
+  gitlab:
+    - host: ${GITLAB_HOST}
+      apiBaseUrl: https://${GITLAB_HOST}/api/v4
+      baseUrl: https://${GITLAB_HOST}
+      token: ${GITLAB_TOKEN}
+    # Entity cards call /api/gitlab/rest/gitlab.com when catalog-info has no
+    # gitlab.com/instance annotation. That name is only a lookup key; the
+    # proxy still talks to this cluster's GitLab.
+    - host: gitlab.com
+      apiBaseUrl: https://${GITLAB_HOST}/api/v4
+      baseUrl: https://${GITLAB_HOST}
+      token: ${GITLAB_TOKEN}
+
+# Used by @backstage-community/plugin-argocd(-backend). Instance name is referenced
+# by entity annotation argocd/instance-name when set; otherwise the first entry wins.
+argocd:
+  username: ${ARGOCD_USERNAME:-admin}
+  password: ${ARGOCD_PASSWORD}
+  appLocatorMethods:
+    - type: config
+      instances:
+        - name: main
+          url: https://argocd.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+          username: ${ARGOCD_USERNAME:-admin}
+          password: ${ARGOCD_PASSWORD}
+
+kubernetes:
+  serviceLocatorMethod:
+    type: multiTenant
+  # Required for the Tekton CI tab: without these the Hub never lists PipelineRuns.
+  customResources:
+    - group: tekton.dev
+      apiVersion: v1
+      plural: pipelines
+    - group: tekton.dev
+      apiVersion: v1
+      plural: pipelineruns
+    - group: tekton.dev
+      apiVersion: v1
+      plural: taskruns
+    - group: route.openshift.io
+      apiVersion: v1
+      plural: routes
+  clusterLocatorMethods:
+    - type: config
+      clusters:
+        - url: https://kubernetes.default.svc
+          name: demo-cluster
+          authProvider: serviceAccount
+          skipTLSVerify: true
+          serviceAccountToken: ${KUBERNETES_SA_TOKEN}
+          customResources:
+            - group: tekton.dev
+              apiVersion: v1
+              plural: pipelines
+            - group: tekton.dev
+              apiVersion: v1
+              plural: pipelineruns
+            - group: tekton.dev
+              apiVersion: v1
+              plural: taskruns
+            - group: route.openshift.io
+              apiVersion: v1
+              plural: routes
+
+quay:
+  uiUrl: ${QUAY_UI_URL}
+
+vault:
+  baseUrl: http://vault.vault.svc:8200
+  publicUrl: https://vault.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+  auth:
+    type: static
+    secret: ${VAULT_TOKEN}
+  secretEngine: secret
+  kvVersion: 2
+
+# Apicurio Registry UI base (simonnepomuk backstage-plugin-apicurio-registry).
+apicurio:
+  ui:
+    baseUrl: https://apicurio.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+
+# Proxy: plugin (OpenAPI v3 client) → cluster Apicurio Registry 2.6 (REST v2).
+# Do NOT also define a proxy endpoint named `apicurio`: Express mounts are prefix
+# matches, so `/apicurio` steals `/apicurio-registry/*` and rewrites to /registry/... (404).
+# HPM resets req.url to originalUrl before rewrite, so match the full /api/proxy/... path.
+# Put /apis/registry/v2 in the rewrite (not the target path) so the v2 prefix is preserved.
+# credentials: demo Hub — plugin fetchApi already sends identity; unauthenticated keeps curl working.
+proxy:
+  endpoints:
+    # Leading slash required — without it the proxy middleware never mounts and
+    # authenticated calls get an empty Backstage 404 (Helmet headers, no upstream).
+    /apicurio-registry:
+      target: https://apicurio.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+      changeOrigin: true
+      secure: false
+      credentials: dangerously-allow-unauthenticated
+      pathRewrite:
+        "^/api/proxy/apicurio-registry/api/groups/([^/]+)/artifacts/([^/]+)/versions/([^/]+)/content/?$": "/apis/registry/v2/groups/$1/artifacts/$2/versions/$3"
+        "^/api/proxy/apicurio-registry/api/": "/apis/registry/v2/"
+      headers:
+        X-Api-Key: ${APICURIO_API_KEY:-}
+
+techdocs:
+  builder: local
+  generator:
+    runIn: local
+  publisher:
+    type: local
+
+enabled:
+  kubernetes: true
+  tekton: true
+  argocd: true
+  quay: true
+  gitlab: true
+  vault: true
+
+# DORA reads Tekton PipelineRuns. dev, staging, and production namespaces
+# count, because this demo records delivery as the component PipelineRun.
+# The plugin default is hourly. A promote has to show up while the demo
+# is still on the homepage, so the four metrics refresh every two minutes.
+scorecard:
+  metricProviders:
+    dora:
+      deploymentFrequency:
+        schedule:
+          frequency: { minutes: 2 }
+          timeout: { minutes: 3 }
+          initialDelay: { seconds: 20 }
+      medianLeadTimeForChanges:
+        schedule:
+          frequency: { minutes: 2 }
+          timeout: { minutes: 3 }
+          initialDelay: { seconds: 20 }
+      changeFailureRate:
+        schedule:
+          frequency: { minutes: 2 }
+          timeout: { minutes: 3 }
+          initialDelay: { seconds: 20 }
+      medianTimeToRestore:
+        schedule:
+          frequency: { minutes: 2 }
+          timeout: { minutes: 3 }
+          initialDelay: { seconds: 20 }
+  plugins:
+    dora:
+      productionEnvironments:
+        - production
+        - dev
+        - staging
+        - stage
+      collectors:
+        deployments:
+          id: tekton:doraDeployments
+        deploymentPullRequests:
+          id: tekton:doraDeploymentPullRequests
+        incidents:
+          id: tekton:doraIncidents
+
+homepage:
+  defaultWidgets:
+    - id: scorecard-aggregated-card
+      ref: scorecard-aggregated-card
+    - id: rhdh-onboarding-section
+      ref: rhdh-onboarding-section
+      props:
+        title: Onboarding section
+    - id: rhdh-entity-section
+      ref: rhdh-entity-section
+      props:
+        title: Entity section
+    - id: rhdh-template-section
+      ref: rhdh-template-section
+      props:
+        title: Template section
+
+# Intelligent Assistant (RHDH 2.1 flavour). The 1.x key was "lightspeed".
+# LLM credentials live in Secret lightspeed-auth-secrets (MaaS via the vLLM provider).
+intelligent-assistant:
+  servicePort: 8080
+  screen-context:
+    enabled: true
+  mcpServers:
+    - name: mcp-integration-tools
+      token: ${MCP_TOKEN}
+  prompts:
+    - title: Explore the Software Catalog
+      message: How do I find my service in the Software Catalog and open its CI, CD, and Topology tabs?
+    - title: Registered APIs
+      message: What APIs are registered in the Software Catalog? Summarize trip-plan-events and where to open it in Apicurio.
+    - title: Scaffold a trip planner
+      message: Walk me through creating the AI Coding App (OpenCode / EnMaaS) from the software templates and what happens in Dev Spaces and the first PipelineRun.
+    - title: RHADS supply chain
+      message: Explain how SBOM, cosign, ACS, and Trusted Profile Analyzer fit together in this demo.

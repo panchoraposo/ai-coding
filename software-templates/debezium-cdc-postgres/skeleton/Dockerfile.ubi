@@ -1,0 +1,40 @@
+# Red Hat Hardened Images. After the Debian ACS scan, copy this over Dockerfile
+# and rebuild:
+#   cp Dockerfile.ubi Dockerfile
+#
+# Catalog: https://images.redhat.com/?name=go&version=1
+#   builder  registry.access.redhat.com/hi/go:1.26-builder
+#   runtime  registry.access.redhat.com/hi/core-runtime:latest
+# Match the community Dockerfile builder (golang:1.26.8-bookworm) so a
+# module bump that raises the go line to 1.25/1.26 still compiles here.
+# core-runtime has no shell, so group-0 permissions are set in the builder.
+#
+ARG GO_BUILDER=registry.access.redhat.com/hi/go:1.26-builder
+ARG GO_RUNTIME=registry.access.redhat.com/hi/core-runtime:latest
+
+FROM ${GO_BUILDER} AS builder
+USER root
+WORKDIR /src
+COPY . .
+RUN mkdir -p /out \
+ && if [ -d vendor ]; then \
+      CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /out/trip-planner ./cmd/server; \
+    else \
+      CGO_ENABLED=0 GOOS=linux go build -o /out/trip-planner ./cmd/server; \
+    fi \
+ && cp -a web /out/web \
+ && cp go.mod go.sum /out/ \
+ && chgrp -R 0 /out \
+ && chmod -R g=u /out \
+ && chmod 775 /out/web
+
+FROM ${GO_RUNTIME}
+COPY --from=builder /out/trip-planner /trip-planner
+COPY --from=builder /out/web /web
+COPY --from=builder /out/go.mod /go.mod
+COPY --from=builder /out/go.sum /go.sum
+ENV WEB_ROOT=/web \
+    HOME=/tmp \
+    PORT=8080
+EXPOSE 8080
+ENTRYPOINT ["/trip-planner"]

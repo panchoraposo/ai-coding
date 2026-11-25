@@ -1,0 +1,140 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: debezium-cdc-postgres
+  title: CDC — Debezium PostgreSQL
+  description: "Propose a change to an existing CDC application. Opens a branch and a GitLab merge request; the branch runs the application's secure pipeline, and merging into the target branch integrates the change."
+  tags:
+    - cdc
+    - debezium
+    - kafka
+    - postgres
+    - go
+    - rhads
+spec:
+  owner: group:default/developers
+  type: service
+  parameters:
+    - title: Existing application
+      required: [component_id, owner, target_branch]
+      properties:
+        component_id:
+          title: Application
+          type: string
+          description: GitLab project that already exists, with its pipeline and GitOps. This template does not create an application.
+          default: orders-cdc
+          pattern: '^([a-zA-Z][a-zA-Z0-9]*)(-[a-zA-Z0-9]+)*$'
+          maxLength: 18
+        description:
+          title: Description
+          type: string
+          default: CDC — Debezium PostgreSQL (orders → Kafka → UI)
+        owner:
+          title: Owner
+          type: string
+          default: developers
+        target_branch:
+          title: Target branch
+          type: string
+          description: Branch that receives the merge. The existing secure pipeline integrates changes when this branch is updated.
+          default: main
+          pattern: '^[A-Za-z0-9._/-]+$'
+    - title: Change
+      required: [change_name, change_title]
+      properties:
+        change_name:
+          title: Branch name
+          type: string
+          description: Created as feature/<name>. Use a new name each time; GitLab rejects a branch that already exists.
+          default: order-desk
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+          maxLength: 24
+        change_title:
+          title: Merge request title
+          type: string
+          default: Update the CDC order desk
+        change_summary:
+          title: What changes
+          type: string
+          default: Adjust the Order Desk change captured from Postgres.
+    - title: Image registry
+      required: [image_registry]
+      properties:
+        image_registry:
+          title: Image Registry
+          type: string
+          enum: [Quay]
+          default: Quay
+        image_host:
+          title: Quay host
+          type: string
+          default: QUAY_HOST_PLACEHOLDER
+        image_tag:
+          title: Image tag
+          type: string
+          default: latest
+    - title: GitLab
+      required: [repo, gitlab_group]
+      properties:
+        repo:
+          title: Repository Location
+          type: object
+          properties:
+            host:
+              title: GitLab host
+              type: string
+              description: Hostname only (no https://).
+              default: GITLAB_HOST_PLACEHOLDER
+        gitlab_group:
+          title: GitLab group
+          type: string
+          description: Group that already owns the application repository.
+          default: developers
+  steps:
+    - id: template
+      name: Prepare the change
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.component_id }}-dev
+          owner: ${{ parameters.owner }}
+          module_path: github.com/rhads/${{ parameters.component_id }}
+          gitlab_group: ${{ parameters.gitlab_group }}
+          host: ${{ parameters.repo.host | replace('https://', '') | replace('http://', '') }}
+          destination: ${{ parameters.gitlab_group }}/${{ parameters.component_id }}
+          gitops_namespace: openshift-gitops
+          cluster_subdomain: CLUSTER_SUBDOMAIN_PLACEHOLDER
+          image_organization: rhads
+          port: 8080
+          apicurio_url: https://apicurio.CLUSTER_SUBDOMAIN_PLACEHOLDER
+          kafka_bootstrap: rhads-kafka-kafka-bootstrap.kafka.svc:9092
+          kafka_topic: ${{ parameters.component_id }}.public.orders
+          change_name: ${{ parameters.change_name }}
+          change_title: ${{ parameters.change_title }}
+          change_summary: ${{ parameters.change_summary }}
+          target_branch: ${{ parameters.target_branch }}
+        targetPath: ./${{ parameters.gitlab_group }}-${{ parameters.component_id }}
+    - id: publish
+      name: Open merge request
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: "${{ parameters.repo.host | replace('https://', '') | replace('http://', '') }}?owner=${{ parameters.gitlab_group }}&repo=${{ parameters.component_id }}"
+        title: ${{ parameters.change_title }}
+        description: |
+          ${{ parameters.change_summary }}
+
+          Branch `feature/${{ parameters.change_name }}` runs the existing secure build (clone, signing check, image, SBOM, ACS, Conforma). Merge into `${{ parameters.target_branch }}` to integrate the change. That update is what refreshes the dev GitOps image.
+        branchName: feature/${{ parameters.change_name }}
+        targetBranchName: ${{ parameters.target_branch }}
+        sourcePath: ./${{ parameters.gitlab_group }}-${{ parameters.component_id }}
+        commitAction: auto
+        removeSourceBranch: true
+  output:
+    links:
+      - title: Merge request
+        url: ${{ steps.publish.output.mergeRequestUrl }}
+      - title: Source repository
+        url: https://${{ parameters.repo.host | replace('https://', '') | replace('http://', '') }}/${{ parameters.gitlab_group }}/${{ parameters.component_id }}

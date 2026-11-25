@@ -1,0 +1,78 @@
+# OIDC issuer uses CLUSTER_SUBDOMAIN_PLACEHOLDER (substituted on apply / when
+# publishing to GitLab). PostSync job + Ansible also patch oidcIssuers.
+# apiVersion v1 required: v1alpha1 only accepts OIDCIssuers (PascalCase) and
+# drops oidcIssuers, which failed apply with "At least one of OIDCIssuers or
+# MetaIssuers must be defined".
+apiVersion: rhtas.redhat.com/v1
+kind: Securesign
+metadata:
+  name: rhads-securesign
+  namespace: trusted-artifact-signer
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  rekor:
+    ingress:
+      enabled: true
+    monitoring:
+      enabled: false
+  trillian:
+    database:
+      create: true
+    monitoring:
+      enabled: false
+  fulcio:
+    ingress:
+      enabled: true
+    config:
+      oidcIssuers:
+        - clientID: trusted-artifact-signer
+          issuer: https://sso.CLUSTER_SUBDOMAIN_PLACEHOLDER/realms/backstage
+          issuerURL: https://sso.CLUSTER_SUBDOMAIN_PLACEHOLDER/realms/backstage
+          type: email
+        # Tekton Chains keyless: projected SA token audience "sigstore".
+        - clientID: sigstore
+          issuer: https://kubernetes.default.svc
+          issuerURL: https://kubernetes.default.svc
+          type: kubernetes
+    signer:
+      certificateChain:
+        organizationName: RHADS Demo
+        organizationEmail: security@rhads.demo
+        commonName: fulcio.rhads-demo
+    monitoring:
+      enabled: false
+  tuf:
+    ingress:
+      enabled: true
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      retain: true
+      size: 100Mi
+  ctlog:
+    monitoring:
+      enabled: false
+  tsa:
+    ingress:
+      enabled: true
+    monitoring:
+      enabled: false
+    ntpMonitoring:
+      enabled: false
+    signer:
+      certificateChain:
+        rootCA:
+          organizationName: RHADS Demo
+          organizationEmail: security@rhads.demo
+          commonName: tsa.rhads-demo-root
+        intermediateCA:
+          - organizationName: RHADS Demo
+            organizationEmail: security@rhads.demo
+            commonName: tsa.rhads-demo-intermediate
+        leafCA:
+          organizationName: RHADS Demo
+          organizationEmail: security@rhads.demo
+          commonName: tsa.rhads-demo-leaf

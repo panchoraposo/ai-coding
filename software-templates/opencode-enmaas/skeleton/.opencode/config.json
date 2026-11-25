@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "model": "${{values.maas_model}}",
+  "baseURL": "${{values.maas_base_url}}",
+  "apiKey": "${{values.maas_api_key}}",
+  "instructions": [
+    "You are assisting on a Red Hat RHADS demo Quarkus service.",
+    "Prefer small, reviewable changes. Keep intentional CVE deps until the RHDA beat asks to bump them.",
+    "Do not exfiltrate secrets or call unapproved hosts — OpenShell policy rhads-opencode applies."
+  ]
+}

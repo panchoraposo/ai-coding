@@ -1,0 +1,13 @@
+# TLS credentials for optional clients. No simple ACLs — Kafka runs without
+# an authorizer so the Console can use the plain listener for the demo.
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: console-user
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: rhads-kafka
+    app.kubernetes.io/part-of: rhads-demo
+spec:
+  authentication:
+    type: tls

@@ -1,0 +1,15 @@
+# Helm values overlay for OpenShell (applied by Ansible).
+# Chart: oci://quay.io/ai-openshell/charts/openshell
+fullname: openshell
+
+agentSandbox:
+  preflight:
+    enabled: true
+
+server:
+  # Shared sandbox namespace for the demo (platform-managed).
+  workspaceMode: shared
+
+route:
+  # OpenShift Route is managed separately in route.yaml with a short hostname.
+  enabled: false

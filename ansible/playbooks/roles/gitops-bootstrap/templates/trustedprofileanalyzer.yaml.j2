@@ -1,0 +1,101 @@
+apiVersion: rhtpa.io/v1
+kind: TrustedProfileAnalyzer
+metadata:
+  name: {{ tpa_name }}
+  namespace: {{ tpa_namespace }}
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  appDomain: {{ tpa_app_domain }}
+  partOf: trustify
+  openshift:
+    useServiceCa: true
+  # Do not set database.minimumConnections / maximumConnections: TPA 3.1 helm
+  # chart treats those ints as the template context and fails with
+  # "can't evaluate field prefix in type int64".
+  database:
+    host: tpa-postgresql
+    port: "5432"
+    name: {{ tpa_db_name }}
+    username: {{ tpa_db_user }}
+    password: {{ tpa_db_password }}
+    sslMode: allow
+  storage:
+    type: filesystem
+    size: 20Gi
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+  createDatabase:
+    enabled: true
+  migrateDatabase:
+    enabled: true
+  oidc:
+    issuerUrl: https://{{ keycloak_hostname }}/realms/{{ keycloak_trustify_realm }}
+    uiScope: "openid read:document"
+    clients:
+      frontend: {}
+      cli:
+        clientSecret: cli-demo-secret
+  modules:
+    createDatabase:
+      enabled: true
+    migrateDatabase:
+      enabled: true
+    # Dependency Analytics queries TPA. Only the CVE Project database and
+    # Red Hat CSAF advisories run. GitHub Advisory stays disabled; the chart
+    # also ships quay-redhat-user-workloads and redhat-sboms, already off.
+    # TPA 3.1 has no CISA KEV importer; exploitability comes from the CSAF feed.
+    createImporters:
+      enabled: true
+      importers:
+        cve:
+          cve:
+            description: CVE Project Database (cve.org)
+            period: 1d
+            source: https://github.com/CVEProject/cvelistV5
+            disabled: false
+        osv-github:
+          osv:
+            description: GitHub Advisory Database
+            period: 1d
+            # Trustify's importer schema (referenced by the TPA chart) requires
+            # transport. Without it the operator rejects the whole release and
+            # never creates Service/server, so RHDA stays NotReady.
+            transport: git
+            source: https://github.com/github/advisory-database
+            path: advisories
+            disabled: true
+        redhat-csaf:
+          csaf:
+            description: Red Hat security advisories
+            period: 1d
+            source: redhat.com
+            disabled: false
+            fetchRetries: 50
+    server:
+      enabled: true
+      replicas: 1
+      # Empty list disables /api/v2/purl/recommend (FEATURE_UNCONFIGURED) and
+      # the RHDA report stays on "Service Unavailable".
+      recommendPatterns:
+        - "^(.+)\\.redhat-[0-9]+$"
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+    importer:
+      enabled: true
+      replicas: 1
+      # One slot per enabled feed (CVE Project, Red Hat CSAF) so they
+      # clone and ingest together instead of waiting on the previous walk.
+      concurrency: 2
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+      workingDirectory:
+        size: 40Gi

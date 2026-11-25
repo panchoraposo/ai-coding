@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: AI Coding App — OpenCode / EnMaaS
+  version: 1.0.0
+  description: Minimal Quarkus service scaffolded for the OpenCode + EnMaaS + OpenShell demo.
+paths:
+  /api/hello:
+    get:
+      summary: Greeting
+      responses:
+        "200":
+          description: OK
+  /api/info:
+    get:
+      summary: Stack info
+      responses:
+        "200":
+          description: OK

@@ -1,0 +1,118 @@
+---
+# OpenShell + Agent Sandbox + EnMaaS (Praxis) + OpenShift AI / llm-d
+- name: Apply Agent Sandbox controller and CRDs
+  ansible.builtin.command:
+    cmd: >
+      oc --context {{ oc_context }} apply -f
+      https://github.com/kubernetes-sigs/agent-sandbox/releases/latest/download/manifest.yaml
+  register: apply_agent_sandbox
+  retries: 5
+  delay: 10
+  until: apply_agent_sandbox.rc == 0
+  changed_when: true
+  failed_when: false
+
+- name: Fallback Agent Sandbox manifest name (sandbox.yaml)
+  when: apply_agent_sandbox.rc | default(1) != 0
+  ansible.builtin.command:
+    cmd: >
+      oc --context {{ oc_context }} apply -f
+      https://github.com/kubernetes-sigs/agent-sandbox/releases/latest/download/sandbox.yaml
+  register: apply_agent_sandbox_alt
+  retries: 5
+  delay: 10
+  until: apply_agent_sandbox_alt.rc == 0
+  changed_when: true
+
+- name: Wait for Agent Sandbox controller
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} -n agent-sandbox-system wait --for=condition=Available deploy --all --timeout=300s
+  register: wait_agent_sandbox
+  retries: 10
+  delay: 20
+  until: wait_agent_sandbox.rc == 0
+  failed_when: false
+  changed_when: false
+
+- name: Install OpenShell Helm chart
+  ansible.builtin.shell: |
+    set -euo pipefail
+    CHART="{{ openshell_helm_chart }}"
+    NS="{{ openshell_namespace }}"
+    VALUES="{{ repo_root }}/gitops/components/openshell/values-demo.yaml"
+    EXTRA=()
+    if [ -n "{{ openshell_helm_version | default('') }}" ]; then
+      EXTRA+=(--version "{{ openshell_helm_version }}")
+    fi
+    helm upgrade --install openshell "${CHART}" \
+      --namespace "${NS}" \
+      --create-namespace \
+      -f "${VALUES}" \
+      "${EXTRA[@]}" \
+      --wait --timeout 15m || \
+    helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
+      --namespace "${NS}" \
+      --create-namespace \
+      -f "${VALUES}" \
+      --wait --timeout 15m
+  args:
+    executable: /bin/bash
+  register: helm_openshell
+  retries: 3
+  delay: 30
+  until: helm_openshell.rc == 0
+  changed_when: true
+
+- name: Apply OpenShell policy / Route (substitute cluster domain)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    DEST=$(mktemp -d)
+    trap 'rm -rf "${DEST}"' EXIT
+    cp -a "{{ repo_root }}/gitops/components/openshell/." "${DEST}/"
+    perl -pi -e 's/CLUSTER_SUBDOMAIN_PLACEHOLDER/{{ openshift_base_domain }}/g' "${DEST}"/*.yaml
+    oc --context {{ oc_context }} apply -k "${DEST}"
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Apply OpenShift AI DataScienceCluster
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/rhoai
+  register: apply_rhoai
+  retries: 40
+  delay: 15
+  until: apply_rhoai.rc == 0
+  changed_when: true
+
+- name: Apply llm-d LLMInferenceService
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/llmd
+  register: apply_llmd
+  retries: 40
+  delay: 15
+  until: apply_llmd.rc == 0
+  changed_when: true
+  failed_when: false
+
+- name: Apply EnMaaS (Praxis) with demo API key and cluster domain
+  ansible.builtin.shell: |
+    set -euo pipefail
+    DEST=$(mktemp -d)
+    trap 'rm -rf "${DEST}"' EXIT
+    cp -a "{{ repo_root }}/gitops/components/enmaas/." "${DEST}/"
+    perl -pi -e 's/CLUSTER_SUBDOMAIN_PLACEHOLDER/{{ openshift_base_domain }}/g' "${DEST}"/*.yaml
+    perl -pi -e 's/ENMAAS_DEMO_API_KEY_PLACEHOLDER/{{ enmaas_demo_api_key }}/g' "${DEST}"/*.yaml
+    oc --context {{ oc_context }} apply -k "${DEST}"
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Wait for Praxis Deployment
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} -n {{ enmaas_namespace }} rollout status deploy/praxis --timeout=300s
+  register: wait_praxis
+  retries: 6
+  delay: 20
+  until: wait_praxis.rc == 0
+  failed_when: false
+  changed_when: false

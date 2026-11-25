@@ -1,0 +1,93 @@
+# Default values for opencode-enmaas Quarkus service.
+replicaCount: 1
+runtime: quarkus
+
+image:
+  pullPolicy: Always
+  registry:
+  host:
+  organization:
+  name:
+  tag:
+  password:
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+
+route:
+  host: ""
+  path: /
+
+livenessProbe:
+  httpGet:
+    path: /q/health/live
+    port: http
+  initialDelaySeconds: 45
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /q/health/ready
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+maas:
+  enabled: true
+  baseUrl: https://enmaas.CLUSTER_SUBDOMAIN_PLACEHOLDER/v1
+  model: RedHatAI/Qwen3-8B-FP8-dynamic
+
+kafka:
+  bootstrapServers: ""
+
+apicurio:
+  url: ""
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+user:
+
+targetNamespace: ${{ values.targetNamespace }}

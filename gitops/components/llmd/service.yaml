@@ -1,0 +1,20 @@
+# ClusterIP alias used by Praxis when the InferenceService Service name differs.
+# Points at the llm-d predictor once the operator creates it; Ansible may patch
+# the selector after the first ready InferenceService.
+apiVersion: v1
+kind: Service
+metadata:
+  name: llmd-openai
+  namespace: llmd
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+    app.kubernetes.io/component: llmd
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: enmaas-openweight

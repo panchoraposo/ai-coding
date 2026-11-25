@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: backstage
+resources:
+  - ../../base
+  - dynamic-plugins-rhdh.yaml
+  - rbac-policy.yaml
+  - catalog-static.yaml
+  - oidc-watchdog.yaml
+  - llama-stack-maas-config.yaml
+  - lightspeed-stack-maas-config.yaml
+  - rhdh-profile-maas-config.yaml
+  - allow-platform-egress.yaml
+  - devhub-plugin-catalog.yaml
+
+configMapGenerator:
+  - name: developer-hub-config
+    files:
+      - app-config.yaml
+    options:
+      disableNameSuffixHash: true
+  - name: tekton-dora-collector
+    files:
+      - package.json=tekton-dora-collector/package.json
+      - index.cjs.js=tekton-dora-collector/index.cjs.js
+    options:
+      disableNameSuffixHash: true
+  - name: topology-camel-icon
+    files:
+      - camel.svg
+      - inject-camel-topology-icon.py
+    options:
+      disableNameSuffixHash: true
+
+generatorOptions:
+  disableNameSuffixHash: true

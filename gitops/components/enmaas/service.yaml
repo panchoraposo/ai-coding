@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: praxis
+  namespace: enmaas
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+    app.kubernetes.io/component: enmaas
+    app.kubernetes.io/name: praxis
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: praxis

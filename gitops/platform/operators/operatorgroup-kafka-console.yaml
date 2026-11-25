@@ -1,0 +1,7 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kafka-console-operator-group
+  namespace: kafka-console
+# Console operator only supports AllNamespaces (OwnNamespace=false).
+spec: {}

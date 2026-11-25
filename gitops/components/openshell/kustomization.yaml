@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: openshell
+resources:
+  - namespace.yaml
+  - policy-configmap.yaml
+  - route.yaml
+  - networkpolicy-note.yaml
+# OpenShell gateway itself is installed by Ansible via Helm
+# (oci://quay.io/ai-openshell/charts/openshell). Agent Sandbox CRDs are applied
+# from the SIG release manifest before the chart. This kustomization holds the
+# demo policy profile, Route, and documentation ConfigMap that Argo reconciles.

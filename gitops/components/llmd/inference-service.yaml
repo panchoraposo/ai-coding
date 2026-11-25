@@ -1,0 +1,29 @@
+# Demo open-weight model for EnMaaS via llm-d / OpenShift AI.
+# Change model.uri / resources for larger GPUs — see docs/openshift5.md.
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: enmaas-openweight
+  namespace: llmd
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+    app.kubernetes.io/component: llmd
+spec:
+  replicas: 1
+  model:
+    uri: hf://RedHatAI/Qwen3-8B-FP8-dynamic
+    name: RedHatAI/Qwen3-8B-FP8-dynamic
+  template:
+    containers:
+      - name: main
+        resources:
+          requests:
+            cpu: "4"
+            memory: 24Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "8"
+            memory: 48Gi
+            nvidia.com/gpu: "1"

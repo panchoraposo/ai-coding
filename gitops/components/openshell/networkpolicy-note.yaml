@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openshell-cni-requirements
+  namespace: openshell
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+data:
+  README: |
+    OpenShell requires a CNI that enforces Kubernetes NetworkPolicy
+    (OVN-Kubernetes on OpenShift does). Without enforcement, sandbox
+    workloads may bypass supervisor egress policy.
+    See docs/openshift5.md.

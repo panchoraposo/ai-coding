@@ -1,0 +1,24 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openshell
+  namespace: openshell
+  labels:
+    app.kubernetes.io/part-of: rhads-demo
+    app.kubernetes.io/component: openshell
+  annotations:
+    # Created after Helm installs the openshell Service; Argo may report
+    # Missing until the first Ansible/Helm apply succeeds.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  host: openshell.CLUSTER_SUBDOMAIN_PLACEHOLDER
+  to:
+    kind: Service
+    name: openshell
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: quarkus-template
+description: AI Coding App (OpenCode / EnMaaS / OpenShell) runtime chart
+type: application
+version: 0.1.0

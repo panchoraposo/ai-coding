@@ -7,34 +7,43 @@ metadata:
     app.kubernetes.io/part-of: rhads-demo
     app.kubernetes.io/component: enmaas
 data:
-  # Minimal Praxis AI-style gateway config. Routes Chat Completions to in-cluster
-  # llm-d. Optional frontier backends can be added under backends.commercial.
+  # Praxis AI filter-chain config (ghcr.io/praxis-proxy/ai). Routes /v1 to
+  # in-cluster llm-d when present; /healthz is local so probes pass without RHOAI.
   praxis.yaml: |
     listeners:
+      - name: ai
+        address: "0.0.0.0:8080"
+        filter_chains: [health, openai]
+
+    filter_chains:
+      - name: health
+        filters:
+          - filter: static_response
+            conditions:
+              - when:
+                  path: /healthz
+            status: 200
+            body: '{"status":"ok","server":"praxis-ai"}'
+            headers:
+              - name: Content-Type
+                value: application/json
       - name: openai
-        address: 0.0.0.0
-        port: 8080
-    auth:
-      api_keys:
-        - env: ENMAAS_API_KEY
-    backends:
-      openweight:
-        type: openai_chat_completions
-        base_url: http://llmd-openai.llmd.svc:8000/v1
-        model: RedHatAI/Qwen3-8B-FP8-dynamic
-      # commercial:
-      #   type: openai_chat_completions
-      #   base_url: https://api.openai.com/v1
-      #   api_key_env: OPENAI_API_KEY
-    routing:
-      default_backend: openweight
-      models:
-        - match: RedHatAI/Qwen3-8B-FP8-dynamic
-          backend: openweight
-        - match: "*"
-          backend: openweight
-    metering:
-      enabled: true
-      log_tokens: true
-    rate_limit:
-      requests_per_minute: 120
+        filters:
+          - filter: ai_operation
+          - filter: router
+            routes:
+              - path_prefix: "/v1"
+                cluster: openweight
+          - filter: headers
+            request_set:
+              - name: Host
+                value: llmd-openai.llmd.svc
+          - filter: load_balancer
+            clusters:
+              - name: openweight
+                endpoints:
+                  - "llmd-openai.llmd.svc:8000"
+
+    insecure_options:
+      # Required to reach ClusterIP backends such as llm-d.
+      allow_private_upstreams: true

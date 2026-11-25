@@ -36,19 +36,20 @@
 
 - name: Install OpenShell Helm chart
   ansible.builtin.shell: |
-    set -euo pipefail
+    set -eo pipefail
     CHART="{{ openshell_helm_chart }}"
     NS="{{ openshell_namespace }}"
     VALUES="{{ repo_root }}/gitops/components/openshell/values-demo.yaml"
-    EXTRA=()
+    # Avoid empty-array + set -u (macOS /bin/bash 3.2 treats EXTRA[@] as unbound).
+    VER_ARGS=()
     if [ -n "{{ openshell_helm_version | default('') }}" ]; then
-      EXTRA+=(--version "{{ openshell_helm_version }}")
+      VER_ARGS=(--version "{{ openshell_helm_version }}")
     fi
     helm upgrade --install openshell "${CHART}" \
       --namespace "${NS}" \
       --create-namespace \
       -f "${VALUES}" \
-      "${EXTRA[@]}" \
+      ${VER_ARGS[@]+"${VER_ARGS[@]}"} \
       --wait --timeout 15m || \
     helm upgrade --install openshell oci://ghcr.io/nvidia/openshell/helm-chart \
       --namespace "${NS}" \

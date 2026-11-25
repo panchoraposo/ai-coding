@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: rhads-demo
 spec:
-  channel: stable-3.17
+  channel: stable-5.0
   installPlanApproval: Automatic
   name: quay-operator
   source: redhat-operators

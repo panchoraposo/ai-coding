@@ -12,6 +12,7 @@
     - role: quay-config
     - role: rhtas-config
     - role: tpa-config
+      when: enable_rhtpa | default(true) | bool
     - role: acs-config
     - role: vault-config
     - role: rhdh-config

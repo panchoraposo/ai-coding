@@ -18,9 +18,11 @@ This repository is the **source of truth for a repeatable install**. Clone it, l
 | OpenShift GitOps / Pipelines / RHDH / Dev Spaces | RHADS base (OpenShift **5**, RHDH 2.1, Dev Spaces 3.31) |
 | RHTAS / TPA / ACS / Quay / RHBK / GitLab / ODF MCG / Vault / ESO / Nexus | same as demo-rhads |
 | Streams for Apache Kafka + Console / Apicurio / Debezium / Perses | same as demo-rhads-kafka |
-| **OpenShift AI + llm-d** | `LLMInferenceService` open-weight model for EnMaaS |
-| **EnMaaS (Praxis AI)** | Governed OpenAI-compatible gateway → llm-d (+ optional frontier) |
+| **OpenShift AI + llm-d** | Optional — enabled when `rhods-operator` is on `redhat-operators` (OCP 5) |
+| **EnMaaS (Praxis AI)** | Governed OpenAI-compatible gateway → llm-d when available (+ optional frontier) |
 | **OpenShell + Agent Sandbox** | Policy-enforced agent runtime for OpenCode tool/network calls |
+| Quay / ODF | `stable-5.0` channels (OpenShift 5) |
+| RHTPA | Optional — same catalog detection as OpenShift AI |
 
 ## Architecture
 

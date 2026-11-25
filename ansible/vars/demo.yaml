@@ -28,7 +28,10 @@ output_file: /tmp/gitops-subscription.yaml
 
 # --- Product channels (OpenShift 5.x) ---
 # OpenShift GitOps · Pipelines · RHDH 2.1 · Dev Spaces 3.31
-# RHTAS · RHTPA · RHACS · Quay 3.17 · RHBK 26.6 · OpenShift AI
+# RHTAS · RHACS · Quay stable-5.0 · ODF stable-5.0 · RHBK 26.6
+# RHTPA / OpenShift AI (rhods) are often absent from redhat-operators on OCP 5.
+# resolve-optional-operators enables them only when resolvable on redhat-operators
+# (AgnosticD v4.22 snapshot catalogs are incompatible with OCP 5 OLM).
 # fast stays on 1.10. 2.1 is published only on fast-2.1.
 rhdh_channel: fast-2.1
 pipelines_channel: latest
@@ -36,10 +39,14 @@ devspaces_channel: stable
 rhtas_channel: stable
 rhtpa_channel: stable-v3
 rhacs_channel: stable
-quay_channel: stable-3.17
+quay_channel: stable-5.0
+odf_channel: stable-5.0
 rhbk_channel: stable-v26.6
-rhoai_channel: stable
+rhoai_channel: stable-3.x
 enable_ai_coding_stack: true
+# Resolved in openshift-config/set-vars.yaml (package presence + catalog source).
+enable_rhtpa: true
+enable_rhoai: true
 openshell_helm_chart: "oci://quay.io/ai-openshell/charts/openshell"
 openshell_helm_version: ""
 openshell_namespace: openshell

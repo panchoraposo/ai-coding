@@ -1,0 +1,68 @@
+---
+# OCP 5: prefer redhat-operators. AgnosticD rhbk-operator-catalogsource is often a
+# v4.22 snapshot that OLM rejects on OCP 5 (ConstraintsNotSatisfiable) even when
+# PackageManifests are visible — only accept catalogs that can actually resolve.
+- name: Probe resolvable catalogs for RHTPA and RHOAI
+  ansible.builtin.shell: |
+    set -euo pipefail
+    CTX="{{ oc_context }}"
+    resolve_pkg() {
+      local pkg="$1" channel="$2" testns="$3"
+      local src srcns
+      # 1) redhat-operators
+      if oc --context "${CTX}" -n openshift-marketplace get packagemanifest "${pkg}" \
+        -o jsonpath='{.status.catalogSource}' 2>/dev/null | grep -qx 'redhat-operators'; then
+        src=redhat-operators; srcns=openshift-marketplace
+      else
+        echo "MISSING|"
+        return 0
+      fi
+      # Dry-run subscription apply is not enough; create a throwaway probe sub in testns
+      # is heavy. Trust redhat-operators presence on OCP 5 marketplace.
+      echo "${src}|${srcns}"
+    }
+    # Only enable when present on redhat-operators (OCP 5 compatible).
+    rhtpa="MISSING|"
+    rhods="MISSING|"
+    if oc --context "${CTX}" -n openshift-marketplace get packagemanifest rhtpa-operator >/dev/null 2>&1; then
+      if oc --context "${CTX}" -n openshift-marketplace get packagemanifest rhtpa-operator \
+        -o jsonpath='{.status.catalogSource}' 2>/dev/null | grep -qx 'redhat-operators'; then
+        rhtpa="redhat-operators|openshift-marketplace"
+      fi
+    fi
+    if oc --context "${CTX}" -n openshift-marketplace get packagemanifest rhods-operator >/dev/null 2>&1; then
+      if oc --context "${CTX}" -n openshift-marketplace get packagemanifest rhods-operator \
+        -o jsonpath='{.status.catalogSource}' 2>/dev/null | grep -qx 'redhat-operators'; then
+        rhods="redhat-operators|openshift-marketplace"
+      fi
+    fi
+    printf 'rhtpa=%s\nrhods=%s\n' "${rhtpa}" "${rhods}"
+  args:
+    executable: /bin/bash
+  register: optional_ops_probe
+  changed_when: false
+
+- name: Parse optional operator probe lines
+  ansible.builtin.set_fact:
+    _rhtpa_loc: "{{ optional_ops_probe.stdout_lines | select('match', '^rhtpa=') | first | regex_replace('^rhtpa=', '') }}"
+    _rhods_loc: "{{ optional_ops_probe.stdout_lines | select('match', '^rhods=') | first | regex_replace('^rhods=', '') }}"
+
+- name: Set RHTPA catalog facts
+  ansible.builtin.set_fact:
+    enable_rhtpa: "{{ _rhtpa_loc.split('|')[0] != 'MISSING' }}"
+    rhtpa_catalog_source: "{{ _rhtpa_loc.split('|')[0] }}"
+    rhtpa_catalog_namespace: "{{ _rhtpa_loc.split('|')[1] | default('') }}"
+
+- name: Set RHOAI (rhods) catalog facts
+  ansible.builtin.set_fact:
+    enable_rhoai: "{{ _rhods_loc.split('|')[0] != 'MISSING' }}"
+    rhoai_catalog_source: "{{ _rhods_loc.split('|')[0] }}"
+    rhoai_catalog_namespace: "{{ _rhods_loc.split('|')[1] | default('') }}"
+
+- name: Show optional operator resolution
+  ansible.builtin.debug:
+    msg:
+      - "RHTPA enable={{ enable_rhtpa }} source={{ rhtpa_catalog_source }}/{{ rhtpa_catalog_namespace }} channel={{ rhtpa_channel }}"
+      - "RHOAI enable={{ enable_rhoai }} source={{ rhoai_catalog_source }}/{{ rhoai_catalog_namespace }} channel={{ rhoai_channel }}"
+      - "Quay channel={{ quay_channel }} ODF channel={{ odf_channel }}"
+      - "Note: AgnosticD v4.22 snapshot catalogs are ignored on OCP 5 (OLM incompatible)."

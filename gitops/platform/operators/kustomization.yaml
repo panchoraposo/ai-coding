@@ -24,16 +24,19 @@ resources:
   - namespace-agent-sandbox.yaml
   - operatorgroup-eso.yaml
   - subscription-eso.yaml
-  - operatorgroup-rhoai.yaml
-  - subscription-rhoai.yaml
   # OwnNamespace operators
   # External Secrets Operator for Red Hat OpenShift (stable-v1) is installed
   # in external-secrets-operator; the operand runs in external-secrets.
   # RHBK OperatorGroup + Subscription stay out of this kustomization.
   # Workshop clusters already run Keycloak (realm `sso`) for OpenShift login;
   # Ansible installs RHBK only when that SSO is absent.
+  #
+  # RHTPA + OpenShift AI (rhods) Subscriptions are applied by Ansible after
+  # catalog detection (redhat-operators or AgnosticD rhbk-operator-catalogsource).
+  # Keep namespaces / OperatorGroups here so targets exist either way.
   - operatorgroup-quay.yaml
   - operatorgroup-rhtpa.yaml
+  - operatorgroup-rhoai.yaml
   - operatorgroup-kafka-console.yaml
   - operatorgroup-coo.yaml
   - operatorgroup-apicurio.yaml
@@ -47,7 +50,6 @@ resources:
   - subscription-devspaces.yaml
   - subscription-quay.yaml
   - subscription-rhtas.yaml
-  - subscription-rhtpa.yaml
   - subscription-rhacs.yaml
   - subscription-amq-streams.yaml
   - subscription-amq-streams-console.yaml

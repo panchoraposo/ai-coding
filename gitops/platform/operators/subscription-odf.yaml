@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: rhads-demo
 spec:
-  channel: stable-4.22
+  channel: stable-5.0
   installPlanApproval: Automatic
   name: odf-operator
   source: redhat-operators

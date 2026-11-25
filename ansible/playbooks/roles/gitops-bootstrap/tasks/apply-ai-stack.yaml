@@ -76,6 +76,7 @@
   changed_when: true
 
 - name: Apply OpenShift AI DataScienceCluster
+  when: enable_rhoai | default(false) | bool
   ansible.builtin.command:
     cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/rhoai
   register: apply_rhoai
@@ -85,6 +86,7 @@
   changed_when: true
 
 - name: Apply llm-d LLMInferenceService
+  when: enable_rhoai | default(false) | bool
   ansible.builtin.command:
     cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/components/llmd
   register: apply_llmd

@@ -1,7 +1,7 @@
 ---
-- name: Component Applications (omit Keycloak when the cluster already owns SSO)
+- name: Component Applications (omit Keycloak / optional ops when unavailable)
   ansible.builtin.set_fact:
-    rhads_component_apps: "{{ (rhads_component_apps_all | rejectattr('name', 'equalto', 'keycloak') | list) if not (rhads_manage_keycloak | default(true) | bool) else rhads_component_apps_all }}"
+    rhads_component_apps: "{{ rhads_component_apps_filtered }}"
   vars:
     rhads_component_apps_all:
       - { name: odf, path: gitops/components/odf, ns: openshift-storage }
@@ -23,6 +23,8 @@
       - { name: rhoai, path: gitops/components/rhoai, ns: redhat-ods-applications }
       - { name: llmd, path: gitops/components/llmd, ns: llmd }
       - { name: enmaas, path: gitops/components/enmaas, ns: enmaas }
+    rhads_skip_apps: "{{ (['keycloak'] if not (rhads_manage_keycloak | default(true) | bool) else []) + (['rhtpa'] if not (enable_rhtpa | default(true) | bool) else []) + (['rhoai', 'llmd'] if not (enable_rhoai | default(true) | bool) else []) + (['openshell', 'rhoai', 'llmd', 'enmaas'] if not (enable_ai_coding_stack | default(true) | bool) else []) }}"
+    rhads_component_apps_filtered: "{{ rhads_component_apps_all | rejectattr('name', 'in', rhads_skip_apps) | list }}"
 
 - name: Create Argo CD Application for operators
   kubernetes.core.k8s:
@@ -106,6 +108,7 @@
             - RespectIgnoreDifferences=true
 
 - name: Ignore RHDA OIDC secret created by PostSync on rhads-rhtpa
+  when: enable_rhtpa | default(true) | bool
   kubernetes.core.k8s:
     state: patched
     kind: Application

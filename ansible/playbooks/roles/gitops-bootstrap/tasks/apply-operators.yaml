@@ -1,4 +1,7 @@
 ---
+- name: Resolve RHTPA / RHOAI catalog sources for this cluster
+  ansible.builtin.include_tasks: resolve-optional-operators.yaml
+
 - name: Apply operator subscriptions from the working tree
   ansible.builtin.command:
     cmd: oc --context {{ oc_context }} apply -k {{ repo_root }}/gitops/platform/operators
@@ -10,6 +13,43 @@
     cmd: oc --context {{ oc_context }} -n openshift-operators delete subscription odf-multicluster-orchestrator --ignore-not-found
   failed_when: false
   changed_when: true
+
+- name: Align Quay subscription channel for OpenShift 5
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: quay-operator
+        namespace: quay
+        labels:
+          app.kubernetes.io/part-of: rhads-demo
+      spec:
+        channel: "{{ quay_channel }}"
+        installPlanApproval: Automatic
+        name: quay-operator
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
+
+- name: Align ODF subscription channel when RHADS manages ODF
+  when: rhads_manage_odf | default(true) | bool
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: odf-operator
+        namespace: openshift-storage
+        labels:
+          app.kubernetes.io/part-of: rhads-demo
+      spec:
+        channel: "{{ odf_channel }}"
+        installPlanApproval: Automatic
+        name: odf-operator
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
 
 - name: Install RHBK when the cluster has no SSO Keycloak
   when: rhads_manage_keycloak | default(true) | bool
@@ -35,25 +75,56 @@
         - "{{ repo_root }}/gitops/platform/operators/subscription-odf.yaml"
       changed_when: true
 
+- name: Subscribe RHTPA from the resolved catalog
+  when: enable_rhtpa | bool
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'subscription-rhtpa.yaml.j2') | from_yaml }}"
+
+- name: Remove broken RHTPA subscription when the package is unavailable
+  when: not (enable_rhtpa | bool)
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} -n trusted-profile-analyzer delete subscription rhtpa-operator --ignore-not-found
+  failed_when: false
+  changed_when: true
+
+- name: Subscribe OpenShift AI (rhods) from the resolved catalog
+  when: enable_rhoai | bool
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'subscription-rhoai.yaml.j2') | from_yaml }}"
+
+- name: Remove broken RHOAI subscription when the package is unavailable
+  when: not (enable_rhoai | bool)
+  ansible.builtin.command:
+    cmd: oc --context {{ oc_context }} -n redhat-ods-operator delete subscription rhods-operator --ignore-not-found
+  failed_when: false
+  changed_when: true
+
+- name: Build CSV wait list for operators present on this cluster
+  ansible.builtin.set_fact:
+    rhads_csv_waits: "{{ rhads_csv_waits_base + rhads_csv_waits_optional }}"
+  vars:
+    rhads_csv_waits_base:
+      - { ns: openshift-operators, match: pipelines }
+      - { ns: openshift-operators, match: rhdh }
+      - { ns: keycloak, match: rhbk }
+      - { ns: quay, match: quay-operator }
+      - { ns: openshift-operators, match: rhtas }
+      - { ns: openshift-operators, match: rhacs }
+      - { ns: openshift-operators, match: devspaces }
+      - { ns: openshift-storage, match: odf-operator }
+      - { ns: openshift-storage, match: mcg-operator }
+      - { ns: external-secrets-operator, match: external-secrets-operator }
+      - { ns: openshift-operators, match: amqstreams }
+      - { ns: kafka-console, match: amq-streams-console }
+      - { ns: openshift-cluster-observability-operator, match: cluster-observability }
+      - { ns: apicurio, match: service-registry }
+    rhads_csv_waits_optional: "{{ ([{'ns': 'trusted-profile-analyzer', 'match': 'rhtpa'}] if enable_rhtpa | bool else []) + ([{'ns': 'redhat-ods-operator', 'match': 'rhods-operator'}] if enable_rhoai | bool else []) }}"
+
 - name: Wait for operator CSVs
   ansible.builtin.include_tasks: wait-csv.yaml
-  loop:
-    - { ns: openshift-operators, match: pipelines }
-    - { ns: openshift-operators, match: rhdh }
-    - { ns: keycloak, match: rhbk }
-    - { ns: quay, match: quay-operator }
-    - { ns: openshift-operators, match: rhtas }
-    - { ns: trusted-profile-analyzer, match: rhtpa }
-    - { ns: openshift-operators, match: rhacs }
-    - { ns: openshift-operators, match: devspaces }
-    - { ns: openshift-storage, match: odf-operator }
-    - { ns: openshift-storage, match: mcg-operator }
-    - { ns: external-secrets-operator, match: external-secrets-operator }
-    - { ns: openshift-operators, match: amqstreams }
-    - { ns: kafka-console, match: amq-streams-console }
-    - { ns: openshift-cluster-observability-operator, match: cluster-observability }
-    - { ns: apicurio, match: service-registry }
-    - { ns: redhat-ods-operator, match: rhods-operator }
+  loop: "{{ rhads_csv_waits }}"
   loop_control:
     loop_var: csv
 

@@ -2,6 +2,7 @@
   "recommendations": [
     "redhat.fabric8-analytics",
     "redhat.java",
-    "sst-dev.opencode"
+    "sst-dev.opencode",
+    "ZooCodeOrganization.zoo-code"
   ]
 }

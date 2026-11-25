@@ -6,7 +6,8 @@ resources:
   - postgresql-rbac.yaml
   - secrets.yaml
   - postgresql.yaml
-  - storage-pvc.yaml
+  # storage PVC is owned by the RHTPA Helm chart (or the TrustedProfileAnalyzer CR).
+  # Do not pre-create "storage" here — Helm refuses to adopt an unmanaged PVC.
   - rhda-backend.yaml
   - job-patch-rhda-oidc.yaml
   - cronjob-analyze.yaml

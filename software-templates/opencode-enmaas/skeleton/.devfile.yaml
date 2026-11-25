@@ -153,13 +153,20 @@ commands:
       component: tools
       commandLine: bash .devcontainer/setup-openshell.sh
       workingDir: ${PROJECT_SOURCE}
+  - id: setup-opencode-cli
+    exec:
+      label: Install OpenCode CLI (required by VS Code extension)
+      component: tools
+      commandLine: bash .devcontainer/setup-opencode-cli.sh
+      workingDir: ${PROJECT_SOURCE}
   - id: setup-ai-tools
     exec:
-      label: Configure OpenCode (.env) + OpenShell CLI
+      label: Configure OpenCode (.env + CLI) + OpenShell CLI
       component: tools
       commandLine: |
         set -euo pipefail
         bash .devcontainer/setup-enmaas.sh
+        bash .devcontainer/setup-opencode-cli.sh
         bash .devcontainer/setup-openshell.sh
       workingDir: ${PROJECT_SOURCE}
   - id: demo-openshell-deny
@@ -188,7 +195,8 @@ commands:
         ./mvnw -s .mvn/settings.xml quarkus:dev -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=8080 -Dquarkus.test.continuous-testing=disabled -Dquarkus.analytics.disabled=true
       workingDir: ${PROJECT_SOURCE}
 events:
-  # Seed EnMaaS/.env + OpenShell CLI when the workspace starts (IDE extension
-  # sst-dev.opencode installs from .vscode/extensions.json via Open VSX).
+  # Seed EnMaaS/.env, OpenCode CLI (required by sst-dev.opencode), and OpenShell
+  # CLI when the workspace starts. The IDE extension installs from
+  # .vscode/extensions.json via Open VSX.
   postStart:
     - setup-ai-tools

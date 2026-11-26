@@ -1,23 +1,32 @@
 # ${{values.component_id}}
 
-AI coding demo app for **OpenCode + EnMaaS (Praxis) + OpenShell** on the RHADS platform.
+AI coding demo app for **OpenCode + MaaS + OpenShell** on the RHADS platform.
 
-## Inner loop (Dev Spaces)
+## Automated MaaS wiring (from the software template)
 
-1. Open this repo in **OpenShift Dev Spaces** (che-code). On first start:
-   - **OpenCode** IDE extension (`sst-dev.opencode`) installs from `.vscode/extensions.json` via Open VSX.
-   - **postStart** installs the **OpenCode CLI** (required by the extension), writes `.env` / `opencode.json` for EnMaaS, and installs the **OpenShell** CLI.
-2. If you need to re-run setup: Commands → **Configure OpenCode (.env + CLI) + OpenShell CLI**.
-3. Press **Ctrl+Esc** (or run `opencode` in the terminal) and ask for a change (for example extend `/api/hello`).
-4. Run **Demo OpenShell deny** to show blocked egress to an unapproved host.
-5. Run **Quarkus dev** and hit `/api/hello` / `/api/info`.
-6. Use **Red Hat Dependency Analytics** on `pom.xml` (intentional old commons-text / snakeyaml).
+At create time the template bakes your MaaS settings into:
 
-> OpenShell has **no** VS Code extension — the template installs the **CLI** and points it at the in-cluster gateway (`OPENSHELL_GATEWAY` / policy `rhads-opencode`).
+| File | Purpose |
+| --- | --- |
+| `opencode.json` | OpenCode CLI provider (`maas` → OpenAI-compatible) |
+| `.opencode/config.json` | Extension-oriented OpenAI settings |
+| `.opencode/maas.env` / `.opencode/.env` | URL, model, API key for postStart scripts |
+| `.devfile.yaml` env | `OPENAI_*` / `MAAS_*` / `ENMAAS_*` in the workspace |
+| `.vscode/settings.json` | OpenCode extension defaults |
+
+Dev Spaces **postStart** runs **Configure OpenCode (.env + CLI) + OpenShell CLI**, which reloads those values, installs the OpenCode CLI, and refreshes local `.env`.
+
+## Inner loop
+
+1. Open in **OpenShift Dev Spaces** — wait for postStart / or run Commands → **Configure OpenCode (.env + CLI) + OpenShell CLI**.
+2. Press **Ctrl+Esc** (or run `opencode`) and ask for a change.
+3. Run **Demo OpenShell deny** for blocked egress.
+4. Run **Quarkus dev** and hit `/api/hello` / `/api/info`.
+
+Configured MaaS: `${{values.maas_base_url}}` · model `${{values.maas_model}}`
 
 ## Platform links
 
-- EnMaaS: `https://enmaas.${{values.cluster_subdomain}}/`
 - OpenShell: `https://openshell.${{values.cluster_subdomain}}/`
 - Vault path: `apps/${{values.component_id}}`
 

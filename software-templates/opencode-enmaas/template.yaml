@@ -2,14 +2,15 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: opencode-enmaas
-  title: AI Coding App — OpenCode / EnMaaS
-  description: "Quarkus service with Dev Spaces OpenCode prewired to EnMaaS (Praxis + llm-d) under OpenShell policy, plus the RHADS secure pipeline (Nexus, Builds, SBOM, cosign, ACS, Conforma)."
+  title: AI Coding App — OpenCode / MaaS
+  description: "Quarkus service with Dev Spaces OpenCode prewired to your OpenAI-compatible MaaS (URL + API key + model), under OpenShell policy, plus the RHADS secure pipeline."
   tags:
     - recommended
     - quarkus
     - java
     - opencode
     - enmaas
+    - maas
     - openshell
     - rhads
 spec:
@@ -36,28 +37,29 @@ spec:
         description:
           title: Description
           type: string
-          default: AI Coding App (OpenCode + EnMaaS + OpenShell)
+          default: AI Coding App (OpenCode + MaaS + OpenShell)
         owner:
           title: Owner
           type: string
           default: developers
-    - title: EnMaaS (Praxis)
-      required: [maas_base_url, maas_model]
+    - title: MaaS (OpenAI-compatible)
+      required: [maas_base_url, maas_model, maas_api_key]
       properties:
         maas_base_url:
-          title: EnMaaS OpenAI-compatible base URL
+          title: MaaS base URL
           type: string
           default: https://enmaas.CLUSTER_SUBDOMAIN_PLACEHOLDER/v1
-          description: In-cluster Praxis gateway. Install substitutes the cluster apps domain.
+          description: OpenAI-compatible base URL including /v1 (in-cluster Praxis or any external MaaS).
         maas_model:
           title: Model id
           type: string
           default: RedHatAI/Qwen3-8B-FP8-dynamic
+          description: Exact model id your MaaS expects (as returned by GET /v1/models when available).
         maas_api_key:
-          title: EnMaaS API key (also used in Dev Spaces / OpenCode)
+          title: MaaS API key
           type: string
           ui:field: Secret
-          description: From secret enmaas/enmaas-demo-key or leave empty and run "Write .env for EnMaaS" in Dev Spaces.
+          description: Baked into the repo for Dev Spaces OpenCode automation (.opencode/maas.env, opencode.json, .devfile env).
     - title: Image registry
       required: [image_registry]
       properties:

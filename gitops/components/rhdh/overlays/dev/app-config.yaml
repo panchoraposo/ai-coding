@@ -1,13 +1,18 @@
 app:
   title: Red Hat Developer Hub — RHADS Supply Chain
   baseUrl: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
+  # One lateral-menu entry. The page renders the four DORA scorecards.
+  sidebar:
+    items:
+      - title: DORA
+        icon: dashboard
+        to: /scorecard/aggregations/dora/metrics/overview
   extensions:
     - entity-content:scorecard/entity-content-scorecard:
         config:
           allowedFilters:
             - kind: component
-    # Scorecard home cards replace the classic home page. The built-in
-    # sections stay, and the four DORA metrics sit above them.
+    # Home keeps the built-in sections. DORA scorecards live on the DORA page.
     - page:home: false
     - page:homepage:
         config:
@@ -18,52 +23,6 @@ app:
     - home-page-layout:homepage/dynamic-homepage-layout:
         config:
           customizable: false
-          widgetLayout:
-            scorecard-aggregated-card:
-              - id: DoraDeploymentFrequency
-                props:
-                  aggregationId: dora.deploymentFrequency
-                priority: 410
-                breakpoints:
-                  xl: { w: 3, h: 6, x: 0, y: 0 }
-                  lg: { w: 3, h: 6, x: 0, y: 0 }
-                  md: { w: 6, h: 6, x: 0, y: 0 }
-                  sm: { w: 6, h: 6, x: 0, y: 0 }
-                  xs: { w: 12, h: 6, x: 0, y: 0 }
-                  xxs: { w: 12, h: 6, x: 0, y: 0 }
-              - id: DoraLeadTime
-                props:
-                  aggregationId: dora.medianLeadTimeForChanges
-                priority: 410
-                breakpoints:
-                  xl: { w: 3, h: 6, x: 3, y: 0 }
-                  lg: { w: 3, h: 6, x: 3, y: 0 }
-                  md: { w: 6, h: 6, x: 6, y: 0 }
-                  sm: { w: 6, h: 6, x: 6, y: 0 }
-                  xs: { w: 12, h: 6, x: 0, y: 6 }
-                  xxs: { w: 12, h: 6, x: 0, y: 6 }
-              - id: DoraChangeFailureRate
-                props:
-                  aggregationId: dora.changeFailureRate
-                priority: 410
-                breakpoints:
-                  xl: { w: 3, h: 6, x: 6, y: 0 }
-                  lg: { w: 3, h: 6, x: 6, y: 0 }
-                  md: { w: 6, h: 6, x: 0, y: 6 }
-                  sm: { w: 6, h: 6, x: 0, y: 6 }
-                  xs: { w: 12, h: 6, x: 0, y: 12 }
-                  xxs: { w: 12, h: 6, x: 0, y: 12 }
-              - id: DoraTimeToRestore
-                props:
-                  aggregationId: dora.medianTimeToRestore
-                priority: 410
-                breakpoints:
-                  xl: { w: 3, h: 6, x: 9, y: 0 }
-                  lg: { w: 3, h: 6, x: 9, y: 0 }
-                  md: { w: 6, h: 6, x: 6, y: 6 }
-                  sm: { w: 6, h: 6, x: 6, y: 6 }
-                  xs: { w: 12, h: 6, x: 0, y: 18 }
-                  xxs: { w: 12, h: 6, x: 0, y: 18 }
 
 backend:
   baseUrl: https://rhdh.${OPENSHIFT_CLUSTER_INGRESS_DOMAIN}
@@ -354,8 +313,6 @@ scorecard:
 
 homepage:
   defaultWidgets:
-    - id: scorecard-aggregated-card
-      ref: scorecard-aggregated-card
     - id: rhdh-onboarding-section
       ref: rhdh-onboarding-section
       props:

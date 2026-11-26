@@ -374,6 +374,54 @@ spec:
                     else:
                         raise SystemExit("Scorecard owner lookup shape changed")
 
+                    # One /scorecard/aggregations/dora/metrics/overview page shows
+                    # all four DORA cards. The home page does not.
+                    page_dir = Path("/dynamic-plugins-root/red-hat-developer-hub-backstage-plugin-scorecard/dist/static")
+                    pages = sorted(page_dir.glob("795.*.chunk.js"))
+                    if not pages:
+                        raise SystemExit("missing scorecard page chunk")
+                    page = pages[0]
+                    text = page.read_text()
+                    old = 'return h?(0,i.jsx)(n.Page,{themeId:"home",children:(0,i.jsx)(n.Content,{children:(0,i.jsx)(b,{})})})'
+                    new = (
+                        'return e==="dora"?(0,i.jsx)(n.Page,{themeId:"home",children:(0,i.jsxs)(n.Content,{children:['
+                        '(0,i.jsx)(j,{title:"DORA"}),'
+                        '(0,i.jsx)(s.A,{sx:{display:"grid",gridTemplateColumns:{xs:"1fr",lg:"1fr 1fr"},gap:2,py:1},children:'
+                        '["dora.deploymentFrequency","dora.medianLeadTimeForChanges","dora.changeFailureRate","dora.medianTimeToRestore"].map(function(id){return (0,i.jsx)(s.A,{sx:{minHeight:360,"& > *":{height:"100%"}},children:(0,i.jsx)(u.T,{aggregationId:id,metricId:id})},id)})'
+                        '})]})}) :h?(0,i.jsx)(n.Page,{themeId:"home",children:(0,i.jsx)(n.Content,{children:(0,i.jsx)(b,{})})})'
+                    )
+                    if 'e==="dora"' in text:
+                        print("Scorecard DORA page already renders the four cards")
+                    elif old in text:
+                        text = text.replace(old, new, 1)
+                        print("Scorecard DORA page renders the four cards")
+                    else:
+                        raise SystemExit("Scorecard page return shape changed")
+                    old_hash = "cb0fcd9a"
+                    new_hash = "rhads4"
+                    if old_hash in text or old_hash in page.name:
+                        text = text.replace(old_hash, new_hash)
+                        dest = page.with_name(page.name.replace(old_hash, new_hash))
+                        dest.write_text(text)
+                        if dest != page:
+                            page.unlink()
+                        scorecard_dist = page_dir.parent
+                        for pointer in (
+                            scorecard_dist / "remoteEntry.js",
+                            scorecard_dist / "mf-manifest.json",
+                            *page_dir.glob("runtime.*.js"),
+                        ):
+                            body = pointer.read_text()
+                            if old_hash in body:
+                                pointer.write_text(body.replace(old_hash, new_hash))
+                                print(f"cache-busted {pointer.name}")
+                            elif new_hash in body or pointer.name.startswith("runtime."):
+                                print(f"already cache-busted {pointer.name}")
+                            else:
+                                raise SystemExit(f"Scorecard page chunk hash missing from {pointer.name}")
+                    else:
+                        page.write_text(text)
+
                     # With no root entity the catalog graph walks nothing, so the
                     # page is an empty canvas. Load the selected kinds instead.
                     graph = Path("/dynamic-plugins-root/red-hat-developer-hub-backstage-plugin-app-defaults/dist/static/23620.c5e85541.chunk.js")

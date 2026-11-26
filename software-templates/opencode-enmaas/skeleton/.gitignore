@@ -39,8 +39,11 @@ nb-configuration.xml
 *.orig
 *.rej
 
-# Local environment
-.env
+# Local environment (workspace-generated). Template-baked MaaS files under
+# .opencode/ are committed so Dev Spaces OpenCode needs no manual setup.
+/.env
+!.opencode/.env
+!.opencode/maas.env
 
 # Plugin directory
 /.quarkus/cli/plugins/

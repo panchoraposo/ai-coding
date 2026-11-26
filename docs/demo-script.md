@@ -17,7 +17,7 @@ Also available (appendix): Kafka trip planners and Debezium CDC from the [demo-r
 
 1. Developer Hub → login as **`dev1`**.
 2. Create → **AI Coding App — OpenCode / EnMaaS** (`code-assist`, ≤18 chars).
-3. EnMaaS URL defaults to `https://enmaas.apps.<cluster>/v1`. Paste API key from `oc -n enmaas get secret enmaas-demo-key -o jsonpath='{.data.api-key}' | base64 -d` (or leave empty and seed in Dev Spaces).
+3. Set the MaaS base URL (OpenCode appends `/chat/completions`; for the external gateway use `https://<host>/prelude-maas/<model>/v1`), the model id, and the API key. The key is written to Vault `apps/{name}/config` and is not committed to the application repo.
 4. Wait for source + gitops repos and Argo apps (`code-assist-build|dev|staging|prod`).
 5. Catalog → component Overview: **Vault** card, **EnMaaS** and **OpenShell** links.
 

@@ -27,6 +27,6 @@ Apicurio Registry is anonymous for the demo (no extra user). Vault secrets for a
 
 TPA API clients used by the pipeline and RHDA backend: Keycloak realm `trustify`, client `cli` (seeded at install). Do not treat demo passwords as production secrets.
 
-**AI coding:** OpenCode in Dev Spaces uses EnMaaS base URL `https://enmaas.apps.<cluster>/v1` and the demo API key. OpenShell policy allows egress to EnMaaS, GitLab, Quay, Nexus, and cluster DNS only.
+**AI coding:** The software template stores the MaaS API key in Vault at `secret/apps/{component}/config` (`MAAS_API_KEY`). Dev Spaces loads it at workspace start. OpenCode uses the base URL from the template (it appends `/chat/completions`). OpenShell policy allows egress to EnMaaS, GitLab, Quay, Nexus, and cluster DNS only.
 
 **Note:** Trip planning uses the Red Hat `quarkus-langchain4j-bom` on RHBOQ 3.33. Kafka topics `flow-in` / `flow-out` carry the HITL CloudEvents.

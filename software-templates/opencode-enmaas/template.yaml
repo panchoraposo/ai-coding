@@ -3,7 +3,7 @@ kind: Template
 metadata:
   name: opencode-enmaas
   title: AI Coding App — OpenCode / MaaS
-  description: "Quarkus service with Dev Spaces OpenCode prewired to your OpenAI-compatible MaaS (URL + API key + model), under OpenShell policy, plus the RHADS secure pipeline."
+  description: "Quarkus service with Dev Spaces OpenCode prewired to your OpenAI-compatible MaaS. The API key is stored in Vault and loaded when the workspace starts."
   tags:
     - recommended
     - quarkus
@@ -59,7 +59,7 @@ spec:
           title: MaaS API key
           type: string
           ui:field: Secret
-          description: Stored only in Vault at secret/apps/{name}/config (MAAS_API_KEY). Dev Spaces loads it at workspace start. It is not committed to Git.
+          description: Written to Vault at secret/apps/{name}/config (MAAS_API_KEY) by the GitOps seed job. Dev Spaces loads it at workspace start. The application source repo does not contain the key.
     - title: Image registry
       required: [image_registry]
       properties:

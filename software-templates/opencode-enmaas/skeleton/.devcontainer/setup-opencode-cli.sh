@@ -57,15 +57,17 @@ if [[ -x "${OPENCODE_HOME}/bin/opencode" && ! -e "${BIN_DIR}/opencode" ]]; then
   ln -sf "${OPENCODE_HOME}/bin/opencode" "${BIN_DIR}/opencode"
 fi
 
-# Always refresh project opencode.json from MaaS settings (template automation).
+# OpenCode 1.19 reads provider.options.baseURL and appends /chat/completions.
+# The API key stays in the environment (loaded from Vault); it is not written here.
 cat > "${ROOT}/opencode.json" <<EOF
 {
   "\$schema": "https://opencode.ai/config.json",
   "model": "maas/${ENMAAS_MODEL}",
-  "providers": {
+  "provider": {
     "maas": {
-      "package": "@opencode/ai/providers/openai-compatible",
-      "settings": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "MaaS",
+      "options": {
         "baseURL": "${ENMAAS_BASE_URL}",
         "apiKey": "{env:OPENAI_API_KEY}"
       },
@@ -77,17 +79,6 @@ cat > "${ROOT}/opencode.json" <<EOF
     }
   }
 }
-EOF
-
-# Persist for interactive shells started by the VS Code extension
-grep -q 'OPENAI_BASE_URL' "${HOME}/.bashrc" 2>/dev/null || cat >> "${HOME}/.bashrc" <<EOF
-
-# MaaS for OpenCode (from RHADS software template)
-export OPENAI_BASE_URL='${ENMAAS_BASE_URL}'
-export OPENAI_API_KEY='${ENMAAS_API_KEY}'
-export MAAS_BASE_URL='${ENMAAS_BASE_URL}'
-export MAAS_MODEL='${ENMAAS_MODEL}'
-export MAAS_API_KEY='${ENMAAS_API_KEY}'
 EOF
 
 echo "OpenCode CLI: $(command -v opencode || echo missing) ($(opencode --version 2>/dev/null || echo unknown))"

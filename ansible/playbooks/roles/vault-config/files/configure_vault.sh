@@ -66,6 +66,19 @@ exec_vault vault write auth/kubernetes/role/app-seed \
   policies=app-seed \
   ttl=15m
 
+cat <<'EOF' | oc --context "$ctx" -n "$ns" exec -i deploy/vault -c vault -- env VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$ROOT" vault policy write devspaces-read -
+path "secret/data/apps/*" {
+  capabilities = ["read"]
+}
+EOF
+
+# Dev Spaces workspaces log in with their pod SA and read the app API key.
+exec_vault vault write auth/kubernetes/role/devspaces-read \
+  bound_service_account_names='*' \
+  bound_service_account_namespaces='*' \
+  policies=devspaces-read \
+  ttl=1h
+
 cat <<'EOF' | oc --context "$ctx" -n "$ns" exec -i deploy/vault -c vault -- env VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$ROOT" vault policy write rhdh-vault-list -
 path "secret/metadata/apps/*" {
   capabilities = ["list", "read"]

@@ -15,6 +15,5 @@
   "redHatDependencyAnalytics.backendUrl": "http://rhda-backend.trusted-profile-analyzer.svc:8080",
   "opencode.provider": "openai",
   "opencode.model": "${{values.maas_model}}",
-  "opencode.baseURL": "${{values.maas_base_url}}",
-  "opencode.apiKey": "${{values.maas_api_key}}"
+  "opencode.baseURL": "${{values.maas_base_url}}"
 }

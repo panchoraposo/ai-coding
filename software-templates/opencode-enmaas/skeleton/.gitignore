@@ -39,10 +39,11 @@ nb-configuration.xml
 *.orig
 *.rej
 
-# Local environment (workspace-generated). Template-baked MaaS files under
-# .opencode/ are committed so Dev Spaces OpenCode needs no manual setup.
+# Local environment. The API key is loaded from Vault into these files at
+# workspace start and must not be committed. .opencode/maas.env has URL and
+# model only.
 /.env
-!.opencode/.env
+.opencode/.env
 !.opencode/maas.env
 
 # Plugin directory

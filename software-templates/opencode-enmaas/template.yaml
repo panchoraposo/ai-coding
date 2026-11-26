@@ -49,17 +49,17 @@ spec:
           title: MaaS base URL
           type: string
           default: https://enmaas.CLUSTER_SUBDOMAIN_PLACEHOLDER/v1
-          description: OpenAI-compatible base URL including /v1 (in-cluster Praxis or any external MaaS).
+          description: OpenCode appends /chat/completions. Use the model prefix, for example https://maas.example/prelude-maas/qwen38-27b/v1 — not the /chat/completions URL itself.
         maas_model:
           title: Model id
           type: string
-          default: RedHatAI/Qwen3-8B-FP8-dynamic
-          description: Exact model id your MaaS expects (as returned by GET /v1/models when available).
+          default: qwen38-27b
+          description: Model id sent in the request body. Must match the id in the MaaS path.
         maas_api_key:
           title: MaaS API key
           type: string
           ui:field: Secret
-          description: Baked into the repo for Dev Spaces OpenCode automation (.opencode/maas.env, opencode.json, .devfile env).
+          description: Stored only in Vault at secret/apps/{name}/config (MAAS_API_KEY). Dev Spaces loads it at workspace start. It is not committed to Git.
     - title: Image registry
       required: [image_registry]
       properties:
@@ -114,7 +114,6 @@ spec:
           port: 8080
           maas_base_url: ${{ parameters.maas_base_url }}
           maas_model: ${{ parameters.maas_model }}
-          maas_api_key: ${{ secrets.maas_api_key }}
         targetPath: ./${{ parameters.gitlab_group }}-${{ parameters.component_id }}
     - id: publish
       name: Publish source to GitLab

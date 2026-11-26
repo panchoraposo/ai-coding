@@ -70,18 +70,16 @@ components:
           value: ${{values.maas_base_url | dump}}
         - name: MAAS_MODEL
           value: ${{values.maas_model | dump}}
-        - name: MAAS_API_KEY
-          value: ${{values.maas_api_key | dump}}
         - name: ENMAAS_BASE_URL
           value: ${{values.maas_base_url | dump}}
         - name: ENMAAS_MODEL
           value: ${{values.maas_model | dump}}
-        - name: ENMAAS_API_KEY
-          value: ${{values.maas_api_key | dump}}
         - name: OPENAI_BASE_URL
           value: ${{values.maas_base_url | dump}}
-        - name: OPENAI_API_KEY
-          value: ${{values.maas_api_key | dump}}
+        - name: VAULT_ADDR
+          value: http://vault.vault.svc:8200
+        - name: VAULT_SECRET_PATH
+          value: apps/${{values.component_id}}/config
         - name: OPENSHELL_POLICY
           value: rhads-opencode
         - name: OPENSHELL_GATEWAY

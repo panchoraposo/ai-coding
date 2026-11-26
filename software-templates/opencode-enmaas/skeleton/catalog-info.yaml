@@ -18,7 +18,7 @@ metadata:
     backstage.io/source-location: url:https://${{values.host}}/${{values.destination}}
     backstage.io/techdocs-ref: url:https://${{values.host}}/${{values.destination}}
     gitlab.com/project-slug: ${{values.destination}}
-    enmaas.io/gateway: https://enmaas.${{values.cluster_subdomain}}/v1
+    enmaas.io/gateway: ${{values.maas_base_url}}
     openshell.io/policy: rhads-opencode
   tags:
     - java
